@@ -1,13 +1,19 @@
 const fs = require('fs')
-const solc = require('solc');
+const solc = require('solc')
+var path = require("path")
+
+const contractPath = path.resolve(__dirname, "../src/contracts", "RPS.sol")
+const artifactPath = path.resolve(__dirname, "../src/contracts", "RPS.json")
 
 function main() {
-    const input = fs.readFileSync('./contracts/RPS.sol');
-    const output = solc.compile(input.toString(), 1);
-    const bytecode = output.contracts[':RPS'].bytecode;
-    const abi = JSON.parse(output.contracts[':RPS'].interface);
-    fs.writeFileSync('./contracts/RPS.json', JSON.stringify({abi, bytecode}, null, 2));
-    fs.writeFileSync('../src/ABI/RPS.json', JSON.stringify({abi}));
+  const source = fs.readFileSync(contractPath, "utf8")
+  const artifact = solc.compile(source.toString(), 1)
+
+  const bytecode = artifact.contracts[":RPS"].bytecode
+  const abi = JSON.parse(artifact.contracts[":RPS"].interface)
+
+  // Writes the abi and bytecode to the artifact file
+  fs.writeFileSync(artifactPath, JSON.stringify({ abi, bytecode }, null, 2))
 }
  
-main();
+main()

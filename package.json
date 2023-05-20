@@ -3,7 +3,8 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "dev": "node scripts/compile.js && vite",
+    "postinstall": "node scripts/compile.js",
+    "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview"
   },
@@ -12,6 +13,7 @@
     "dotenv": "^16.0.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-router-dom": "^6.11.2",
     "solc": "^0.4.26",
     "viem": "~0.3.24",
     "wagmi": "^1.0.5"
