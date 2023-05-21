@@ -3,8 +3,9 @@ import { RainbowKitProvider, darkTheme } from '@rainbow-me/rainbowkit'
 import * as React from 'react'
 import * as ReactDOM from 'react-dom/client'
 import { WagmiConfig } from 'wagmi'
+import { RouterProvider } from "react-router-dom"
+import router from './router'
 
-import { App } from './App'
 import { chains, config } from './wallet'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -19,7 +20,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         showRecentTransactions={true}
         modalSize="compact"
       >
-        <App />
+        <RouterProvider router={router} />
       </RainbowKitProvider>
     </WagmiConfig>
   </React.StrictMode>,
