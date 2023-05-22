@@ -18,7 +18,11 @@ function main() {
 
   // Writes the abi and bytecode to the artifact file
   fs.writeFileSync(RPSArtifactPath, JSON.stringify({ abi: RPSAbi, bytecode: RPSBytecode }, null, 2))
-  fs.writeFileSync(HasherArtifactPath, JSON.stringify({ abi: HasherAbi, bytecode: HasherBytecode }, null, 2))
+  fs.writeFileSync(HasherArtifactPath, JSON.stringify({ 
+    address: "0x027c97b35196704dc97c0e23a69fc2978192c519",
+    abi: HasherAbi, 
+    bytecode: HasherBytecode
+  }, null, 2))
 }
  
 main()

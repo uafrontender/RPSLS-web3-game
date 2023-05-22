@@ -6,23 +6,23 @@ import { alchemyProvider } from 'wagmi/providers/alchemy'
 import { publicProvider } from 'wagmi/providers/public'
 
 const { chains, publicClient, webSocketPublicClient } = configureChains(
-  [goerli],
-  [
-    alchemyProvider({ apiKey: import.meta.env.VITE_ALCHEMY_KEY}),
-    publicProvider()
-  ],
+    [goerli],
+    [
+        alchemyProvider({ apiKey: import.meta.env.VITE_ALCHEMY_KEY}),
+        publicProvider()
+    ],
 )
 
 const { connectors } = getDefaultWallets({
-  appName: 'RPS-LS',
-  chains
+    appName: 'RPS-LS',
+    chains
 })
 
 export const config = createConfig({
-  autoConnect: true,
-  connectors,
-  publicClient,
-  webSocketPublicClient,
+    autoConnect: true,
+    connectors,
+    publicClient,
+    webSocketPublicClient,
 })
 
 export { chains }

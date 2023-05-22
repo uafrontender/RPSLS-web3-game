@@ -12,70 +12,61 @@ import {
   parseEther,
   fromHex,
   keccak256,
+  isHex,
+  hexToBigInt,
+  getContractAddress,
+  GetBlockTransactionCountParameters
 } from 'viem'
+import { usePrepareSalt } from '../hooks/usePrepareSalt'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { useAccount, 
   useWalletClient, 
   useWaitForTransaction,
-  useSignMessage
+  useSignMessage,
+//   usePublicClient
 } from 'wagmi'
-
-type moveKey = keyof typeof moves
-  
-//enum Move {Null, Rock, Paper, Scissors, Spock, Lizard}
-const moves = {
-  'Rock': 1,
-  'Paper': 2,
-  'Scissors': 3,
-  'Spock': 4,
-  'Lizard': 5
-}
+import { useHash } from '../hooks/useHasher'
+import { moves, moveKey } from '../contants'
 
 
 const CreateGame = () => {
-    const { address } = useAccount()
-    const { data: walletClient, isError, isLoading } = useWalletClient()
     const navigate = useNavigate()
+    const { address } = useAccount()
+    const { data: walletClient } = useWalletClient()
+    // const PublicClient = usePublicClient()
+    
     const [RPSHash, setRPSHash] = useState<Hash | undefined>()
-    const [HasherHash, setHasherHash] = useState<Hash | undefined>()
     const [RPSLoading, setRPSLoading] = useState(false)
-    const [HasherLoading, setHasherLoading] = useState(false)
     const [OpponentAddress, setOpponentAddress] = useState<Address | undefined>()
-    const [moveHash, setMoveHash] = useState<Hash | undefined>()
     const [move, setMove] = useState(1)
     const [bet, setBet] = useState<number>(0)
-    const [salt, setSalt] = useState<string>('')
-
-    const { data: signedMsg, signMessage } = useSignMessage({
-      message: `I'm signing that my move is [${Object.keys(moves)[move-1]}]`,
-    })
+    const [salt, setSalt] = useState<bigint>(0n)
+    const [moveHash, isMoveHashError] = useHash(move, salt)
+    // const [accountNone, setAccountNonce] = useState<any>()
+    // const [CREATEAddress, setCREATEAddress] = useState<Address | undefined>()
     
     const { data: RPSReceipt } = useWaitForTransaction({
       hash: RPSHash,
     })
-    const { data: HasherReceipt } = useWaitForTransaction({
-      hash: HasherHash,
-    })
+
     const [gameAddress, setGameAddress] = useState<Address | undefined>(
       localStorage.getItem('gameAddress') as Address
     )
-    const [hasherAddress, setHasherAddress] = useState<Address | undefined>(
-      localStorage.getItem('hasherAddress') as Address
-    )
+
+    const [signMessage, hashUint] = usePrepareSalt(move, gameAddress)
+
+    // const { data: signedMsg, signMessage } = useSignMessage({
+    //   message: `I'm signing that my hand is [${Object.keys(moves)[move-1]}] for the game ${CREATEAddress}`,
+    // })
   
     useEffect(() => {
-      console.log(RPSHash, RPSReceipt)
+      // console.log(RPSHash, RPSReceipt)
       if(RPSHash && !RPSReceipt) setRPSLoading(true)
       else setRPSLoading(false)
     }, [RPSHash, RPSReceipt])
 
     useEffect(() => {
-      if(HasherHash && !HasherReceipt) setHasherLoading(true)
-      else setHasherLoading(false)
-    }, [HasherHash, HasherReceipt])
-
-    useEffect(() => {
-      // if(gameAddress) navigate(`/play/${gameAddress}`)
+      if(gameAddress) navigate(`/play/${gameAddress}`)
     }, [gameAddress])
 
     useEffect(() => {
@@ -88,17 +79,28 @@ const CreateGame = () => {
           navigate(`/play/${contractAddress}`)
         }
     }, [RPSReceipt])
-
-
+    
     useEffect(() => {
-      if(!HasherReceipt) return
-      let { contractAddress } = HasherReceipt as TransactionReceipt
-      contractAddress = `0x${contractAddress?.substring(2)}`
-      if(isAddress(contractAddress)) {
-        setHasherAddress(contractAddress)
-        localStorage.setItem('hasherAddress', contractAddress as string)
-      }
-    }, [HasherReceipt])
+        console.log(hashUint)
+    }, [hashUint])
+
+
+
+    // useEffect(() => {
+    //   if(!address) return
+      
+    //   PublicClient.getTransactionCount({ address: address as Address }).then((nonce) => {
+    //     setAccountNonce(nonce)
+    //   })
+      
+    //   setCREATEAddress(
+    //     getContractAddress({
+    //       from: address as Address,
+    //       nonce: accountNone,
+    //     })
+    //   )
+    //   console.log('CREATEAddress', CREATEAddress, 'nonce', accountNone)
+    // }, [address])
 
   //   useEffect(() => {
   //     if(signedMsg) {
@@ -110,11 +112,23 @@ const CreateGame = () => {
   //     }
   // }, [signedMsg])
 
-  useEffect(() => {
-    let salt = hashMessage(`0x${move.toString() + signedMsg}`)
-    console.log(signedMsg, ',', salt)
-    if(signedMsg) setMoveHash(salt)
-  }, [signedMsg])
+//   useEffect(() => {
+//         if(signedMsg) {
+//             const signedMsgHash = keccak256(signedMsg as Hash)
+//             let hashUint = hexToBigInt(signedMsgHash, {
+//                 size: 256,
+//                 signed: false,
+//             })
+//         setSalt(hashUint as any as bigint)
+//     }
+//   }, [signedMsg])
+
+  // useEffect(() => {
+  //   if(moveHash) {
+  //   }
+  //   if(isMoveHashError) {
+  //   }
+  // }, [moveHash, isMoveHashError])
   
   
     useEffect(() => {
@@ -122,30 +136,23 @@ const CreateGame = () => {
     }, [move])
   
     const deployRPS = async () => {
-      if(!OpponentAddress || !isAddress(OpponentAddress) || OpponentAddress === address) {
-        alert('Please enter a valid opponent address, opponent address cannot be empty nor the same as your address')
-        return
-      }
-      setRPSHash(
-        await walletClient?.deployContract({
-        abi: gameContract.abi,
-        bytecode: `0x${gameContract.bytecode}`,
-        // args: [moveHash, OpponentAddress],
-        args: [moveHash, address],
-        ...{value: parseEther(`${bet}`)} // staked ether
-      }))
-      // waste gas, can be deployed once, and be reused for all games
-      setHasherHash(
-        await walletClient?.deployContract({
-        abi: HasherContract.abi,
-        bytecode: `0x${HasherContract.bytecode}`,
-      }))
+        if(!OpponentAddress || !isAddress(OpponentAddress) || OpponentAddress === address) {
+            alert('Please enter a valid opponent address, opponent address cannot be empty nor the same as your address')
+            return
+        }
+        setRPSHash(
+            await walletClient?.deployContract({
+            abi: gameContract.abi,
+            bytecode: `0x${gameContract.bytecode}`,
+            // args: [moveHash, OpponentAddress],
+            args: [moveHash, address],
+            ...{value: parseEther(`${bet}`)} // staked ether
+        }))
     }
   
     const createGame = async () => {
-      await signMessage()
+    //   await signMessage()
     }
-  
   
     return (
       <>
@@ -153,6 +160,7 @@ const CreateGame = () => {
       {address ? (
         <>
             <div>Connected: {address}</div>
+            {/* <div>{`Account None ${accountNone} and CREATE address is ${CREATEAddress}`}</div> */}
             {gameAddress && (
             <div>Game Address: {gameAddress}</div>
             )}
@@ -178,18 +186,6 @@ const CreateGame = () => {
                 <code>{stringify(RPSReceipt, null, 2)}</code>
                 </pre>
               </div>
-              </>
-            )}
-            {HasherReceipt && (
-              <>
-                <div>Hasher Created!</div>
-                <div>Contract Address: {hasherAddress}</div>
-                <div>
-                  Receipt:{' '}
-                  <pre>
-                  <code>{stringify(HasherReceipt, null, 2)}</code>
-                  </pre>
-                </div>
               </>
             )}
         </> 

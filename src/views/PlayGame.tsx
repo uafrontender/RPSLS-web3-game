@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { useMoveTimeout, useMoveCountdown, useGameData, usePlay, useSolve } from "../hooks/useRPS"
+import { useMoveCountdown, useGameData, usePlay, useSolve } from "../hooks/useRPS"
 import { formatTime } from "../utils/formatTime"
 import { Hash, isAddress, fromHex, keccak256 } from "viem"
 import { ConnectButton } from "@rainbow-me/rainbowkit"
-import { useAccount, useSignMessage } from "wagmi"
+import { useAccount, useSignMessage, usePublicClient } from "wagmi"
+import { hexToBigInt } from "viem"
 
 type moveKey = keyof typeof moves
 
@@ -24,13 +25,13 @@ const PlayGame = () => {
     const [timeout, lastAction] = useMoveCountdown()
     const [now, setNow] = useState(Math.floor(Date.now()/1000))
     const [moveCoundtown, setMoveCountdown] = useState<string | 0>(formatTime(0))
-    const [player1, player2, bet, player2Move] = useGameData()
+    const [player1, player2, bet, player2Move, player1Hash] = useGameData()
     const [move, setMove] = useState(0)
     const [play, playLoading, playSuccess] = usePlay(move, Number(bet))
     const { data: signedMsg, signMessage } = useSignMessage({
-        message: `I'm signing that my move is [${Object.keys(moves)[move-1]}]`,
+      message: `I'm signing that my hand is [${Object.keys(moves)[move-1]}] for the game ${gameAddress}`,
     })
-    const [salt, setSalt] = useState<string>('')
+    const [salt, setSalt] = useState<bigint>(0n)
     const [solve, solveLoading, solveSuccess] = useSolve(move, salt)
 
     const handleSolve = () => {
@@ -45,10 +46,14 @@ const PlayGame = () => {
 
     useEffect(() => {
         if(signedMsg) {
-            const signedMsgHash = keccak256(signedMsg)
-            setSalt(fromHex(signedMsgHash, 'bigint') as any as string)
+          const signedMsgHash = keccak256(signedMsg as Hash)
+          let hashUint = hexToBigInt(signedMsgHash, {
+            size: 256,
+            signed: false,
+          })
+          setSalt(hashUint as any as bigint)
         }
-    }, [signedMsg])
+      }, [signedMsg])
 
     
     useEffect(() => {
@@ -85,6 +90,8 @@ const PlayGame = () => {
             <p>{ player2 }</p>
             <p>{ bet }</p>
             <p>{ player2Move }</p>
+            <p>{ player1Hash }</p>
+            <p>{ salt.toString() }</p>
             <p>You { address === player1 ? address : address === player2 ? address : 'are not a player!' }</p>
             <select onChange={(e) => setMove(Number(e.target.value))}>
               {Object.keys(moves).map((move, i) => (
