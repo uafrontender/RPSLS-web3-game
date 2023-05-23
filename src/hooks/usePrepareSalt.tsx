@@ -11,14 +11,14 @@ type SignMessageArgs = {
     message: string;
 };
 
-export const usePrepareSalt = (move: number, gameAddress?: Address) : [(args?: SignMessageArgs | undefined) => void, bigint | undefined] => {
+export const usePrepareSalt = (move: number, gameAddress?: Address) : [(args?: SignMessageArgs | undefined) => void, bigint] => {
     const PublicClient = usePublicClient()
     const { address } = useAccount()
     const [accountNone, setAccountNonce] = useState<any>()
     const [CREATEAddress, setCREATEAddress] = useState<Address | undefined>()
 
     useEffect(() => {
-        if(!gameAddress) {
+        if(!gameAddress && address) {
             // contract is not deployed yet, contract address is keccak256[sender, nonce]
             PublicClient.getTransactionCount({ address: address as Address }).then((nonce) => {
                 setAccountNonce(nonce)
@@ -30,7 +30,6 @@ export const usePrepareSalt = (move: number, gameAddress?: Address) : [(args?: S
                 nonce: accountNone,
                 })
             )
-            console.log('CREATEAddress', CREATEAddress, 'nonce', accountNone)
         }
     }, [])
 
@@ -39,7 +38,7 @@ export const usePrepareSalt = (move: number, gameAddress?: Address) : [(args?: S
         message: `I'm signing that my hand is [${Object.keys(moves)[move-1]}] for the game ${gameAddress ? gameAddress : CREATEAddress}`,
     })
 
-    if(!signedMsg) return [signMessage, undefined]
+    if(!signedMsg) return [signMessage, 0n]
     // salt = unsigned representation of signed message hash
     const signedMsgHash = keccak256(signedMsg as Hash)
     let hashUint = hexToBigInt(signedMsgHash, {
@@ -47,8 +46,6 @@ export const usePrepareSalt = (move: number, gameAddress?: Address) : [(args?: S
         signed: false,
     })
 
-    console.log(CREATEAddress)
-
-    return [signMessage, hashUint as bigint | undefined]
+    return [signMessage, BigInt(1) as bigint]
 }
 

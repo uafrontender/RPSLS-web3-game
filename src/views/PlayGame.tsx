@@ -4,19 +4,12 @@ import { useMoveCountdown, useGameData, usePlay, useSolve } from "../hooks/useRP
 import { formatTime } from "../utils/formatTime"
 import { Hash, isAddress, fromHex, keccak256 } from "viem"
 import { ConnectButton } from "@rainbow-me/rainbowkit"
-import { useAccount, useSignMessage, usePublicClient } from "wagmi"
+import { useAccount, useSignMessage, usePublicClient, Address } from "wagmi"
 import { hexToBigInt } from "viem"
+import { usePrepareSalt } from "../hooks/usePrepareSalt"
 
-type moveKey = keyof typeof moves
-
-//enum Move {Null, Rock, Paper, Scissors, Spock, Lizard}
-const moves = {
-    'Rock': 1,
-    'Paper': 2,
-    'Scissors': 3,
-    'Spock': 4,
-    'Lizard': 5
-}
+import { useHash } from '../hooks/useHasher'
+import { moves, moveKey } from '../contants'
 
 const PlayGame = () => {
     const navigate = useNavigate()
@@ -26,12 +19,9 @@ const PlayGame = () => {
     const [now, setNow] = useState(Math.floor(Date.now()/1000))
     const [moveCoundtown, setMoveCountdown] = useState<string | 0>(formatTime(0))
     const [player1, player2, bet, player2Move, player1Hash] = useGameData()
-    const [move, setMove] = useState(0)
+    const [move, setMove] = useState(1)
     const [play, playLoading, playSuccess] = usePlay(move, Number(bet))
-    const { data: signedMsg, signMessage } = useSignMessage({
-      message: `I'm signing that my hand is [${Object.keys(moves)[move-1]}] for the game ${gameAddress}`,
-    })
-    const [salt, setSalt] = useState<bigint>(0n)
+    const [signMessage, salt] = usePrepareSalt(move, gameAddress as Address)
     const [solve, solveLoading, solveSuccess] = useSolve(move, salt)
 
     const handleSolve = () => {
@@ -40,20 +30,9 @@ const PlayGame = () => {
             signMessage?.()
             return
         }
-        // solve?.()
+        solve?.()
         console.log(move, salt)
     }
-
-    useEffect(() => {
-        if(signedMsg) {
-          const signedMsgHash = keccak256(signedMsg as Hash)
-          let hashUint = hexToBigInt(signedMsgHash, {
-            size: 256,
-            signed: false,
-          })
-          setSalt(hashUint as any as bigint)
-        }
-      }, [signedMsg])
 
     
     useEffect(() => {
@@ -62,10 +41,6 @@ const PlayGame = () => {
         }, 1000)
         return () => clearInterval(interval)
     }, [now])
-
-    // useEffect(() => {
-    //     console.log(player1, player2, bet, player2Move)
-    // }, [player1])
 
     useEffect(() => {
         if(!gameAddress) navigate('/')

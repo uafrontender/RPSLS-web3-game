@@ -1,0 +1,12 @@
+/* fonts */
+@import url('https://fonts.googleapis.com/css2?family=Wix+Madefor+Display:wght@400;500;600;700;800&display=swap');
+
+/* tailwind base styles */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* custom styles */
+:root {
+    --bg-image: url('/2.png');
+}

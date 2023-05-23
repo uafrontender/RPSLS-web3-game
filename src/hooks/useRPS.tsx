@@ -1,4 +1,4 @@
-import { useContractRead, 
+import { 
     useContractReads, 
     useContractWrite, 
     usePrepareContractWrite,
@@ -6,7 +6,6 @@ import { useContractRead,
 } from 'wagmi'
 import * as gameContract from '../contracts/RPS.json'
 import { Address, AbiItem, parseGwei, parseEther, Hash } from 'viem'
-import { useAccount } from 'wagmi'
 
 const RPSContract = {
     address: localStorage.getItem('gameAddress') as Address,
@@ -83,7 +82,6 @@ export const usePlay = (move: number, bet: number):[(config?: any | undefined) =
     })
     
     const { data, write } = useContractWrite(config as any)
-
     const { isLoading, isSuccess } = useWaitForTransaction({
         hash: data?.hash,
     })
@@ -97,9 +95,8 @@ export const useSolve = (move: number, salt: bigint):[(config?: any | undefined)
         functionName: 'solve' as any,
         args: [move, salt]
     })
-    
-    const { data, write } = useContractWrite(config as any)
 
+    const { data, write } = useContractWrite(config as any)
     const { isLoading, isSuccess } = useWaitForTransaction({
         hash: data?.hash,
     })

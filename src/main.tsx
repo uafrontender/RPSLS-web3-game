@@ -5,6 +5,7 @@ import * as ReactDOM from 'react-dom/client'
 import { WagmiConfig } from 'wagmi'
 import { RouterProvider } from "react-router-dom"
 import router from './router'
+import './index.css'
 
 import { chains, config } from './wallet'
 
@@ -14,8 +15,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             <RainbowKitProvider 
                 chains={chains}
                 theme={darkTheme({
-                accentColor: '#289FEF',
-                overlayBlur: 'small',
+                    accentColor: '#289FEF',
+                    overlayBlur: 'small',
                 })}
                 showRecentTransactions={true}
                 modalSize="compact"
