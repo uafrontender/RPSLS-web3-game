@@ -10,3 +10,27 @@
 :root {
     --bg-image: url('/2.png');
 }
+
+.flip {
+    -webkit-transform: scaleX(-1);
+    transform: scaleX(-1);
+}
+
+body {
+    color: white;
+}
+
+/* default behaviour overrides */
+input[type="number"] {
+    -webkit-appearance: textfield;
+       -moz-appearance: textfield;
+            appearance: textfield;
+  }
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { 
+-webkit-appearance: none;
+}
+input:focus {
+    --tw-ring-color: transparent !important;
+    border-color: transparent !important;
+}

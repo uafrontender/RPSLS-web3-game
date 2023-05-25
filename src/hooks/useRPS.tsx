@@ -103,3 +103,30 @@ export const useSolve = (move: number, salt: bigint):[(config?: any | undefined)
     
     return [write, isLoading, isSuccess, isError]
 }
+
+export const useTimeout = (isPlayer2: Boolean):[(config?: any | undefined) => void, Boolean, Boolean] => {
+    const { config: j1config } = usePrepareContractWrite({
+        ...RPSContract,
+        functionName: 'j1Timeout' as any,
+        args: []
+    })
+
+    const { config: j2config } = usePrepareContractWrite({
+        ...RPSContract,
+        functionName: 'j2Timeout' as any,
+        args: []
+    })
+
+    const { data: j1, write: j1write } = useContractWrite(j1config as any)
+    const { data: j2, write: j2write } = useContractWrite(j2config as any)
+
+    const { isLoading: j1Loading, isSuccess: j1Sucess } = useWaitForTransaction({
+        hash: j1?.hash,
+    })
+
+    const { isLoading: j2Loading, isSuccess: j2Success } = useWaitForTransaction({
+        hash: j2?.hash,
+    })
+    
+    return isPlayer2 ? [j1write, j1Loading, j1Sucess] : [j2write, j2Loading, j2Success]
+}

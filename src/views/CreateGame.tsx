@@ -6,11 +6,9 @@ import {
   Hash,
   TransactionReceipt,
   isAddress,
-  stringify,
   parseEther
 } from 'viem'
 import { usePrepareSalt } from '../hooks/usePrepareSalt'
-import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { useAccount, 
   useWalletClient, 
   useWaitForTransaction
@@ -18,17 +16,37 @@ import { useAccount,
 
 import { useHash } from '../hooks/useHasher'
 import { moves, moveKey } from '../contants'
+import EthInputGadget from '../components/EthInputGadget'
+
+const phases = {
+    1: {   
+        title: 'Game Info',
+        description: 'Opponent address, your move and a bet.',
+    },
+    2: {
+        title: 'Sign Your Move',
+        description: 'To conceal your move from your opponent.',
+    },
+    3: {
+        title: 'Start the game',
+        description: 'Deploy this game contract to Goerli Network.',
+    },
+ } as { [key: number]: { title: string, description: string } }
 
 
 const CreateGame = () => {
     const navigate = useNavigate()
     const { address } = useAccount()
+    const [currentPhase, setCurrentPhase] = useState<number>(1)
     const { data: walletClient } = useWalletClient()
     const [RPSHash, setRPSHash] = useState<Hash | undefined>()
     const [RPSLoading, setRPSLoading] = useState(false)
     const [OpponentAddress, setOpponentAddress] = useState<Address | undefined>()
+    const [tempOpponentAddress, setTempOpponentAddress] = useState<string>("")
     const [move, setMove] = useState(1)
     const [bet, setBet] = useState<number>(0)
+    const [resetBet, setResetBet] = useState<Boolean>(false)
+    const [salt, setSalt] = useState<bigint | undefined>(0n)
     
     const { data: RPSReceipt } = useWaitForTransaction({
       hash: RPSHash,
@@ -38,41 +56,19 @@ const CreateGame = () => {
       localStorage.getItem('gameAddress') as Address
     )
 
-    const [signMessage, salt] = usePrepareSalt(move, gameAddress)
-    const [moveHash, isMoveHashError] = useHash(move, salt)
+    const [signMessage, preparedSalt] = usePrepareSalt(move, gameAddress)
+    const [moveHash] = useHash(move, salt!)
   
-    useEffect(() => {
-      if(RPSHash && !RPSReceipt) setRPSLoading(true)
-      else setRPSLoading(false)
-    }, [RPSHash, RPSReceipt])
-
-    useEffect(() => {
-      if(gameAddress) navigate(`/play/${gameAddress}`)
-    }, [gameAddress])
-
-    useEffect(() => {
-        if(!RPSReceipt) return
-        let { contractAddress } = RPSReceipt as TransactionReceipt
-        contractAddress = `0x${contractAddress?.substring(2)}`
-        if(isAddress(contractAddress)) {
-          setGameAddress(contractAddress)
-          localStorage.setItem('gameAddress', contractAddress as string)
-          navigate(`/play/${contractAddress}`)
-        }
-    }, [RPSReceipt])
-    
-    useEffect(() => {
-        console.log(salt)
-        console.log(moveHash)
-    }, [salt])
-
-  
-    const deployRPS = async () => {
-        // address sanity checks. note: players can play against themselves
-        if(!OpponentAddress || !isAddress(OpponentAddress)) {
-            alert('Please enter a valid opponent address, opponent address cannot be empty nor the same as your address')
+    const signMove = async () => {
+        if(!OpponentAddress || !isAddress(OpponentAddress) || OpponentAddress === address) {
+            alert('Please enter a valid opponent address, opponent address cannot be empty!')
             return
         }
+        signMessage?.() 
+    }
+  
+    const deployRPS = async () => {
+        // address sanity checks.
         setRPSHash(
             await walletClient?.deployContract({
             abi: gameContract.abi,
@@ -81,130 +77,171 @@ const CreateGame = () => {
             ...{value: parseEther(`${bet}`)} // staked ether
         }))
     }
-  
-    const createGame = async () => {
-        signMessage?.() 
+
+    const reset = () => {
+        setOpponentAddress(undefined)
+        setTempOpponentAddress("")
+        setResetBet(true)
+        setMove(1)
+        setSalt(undefined)
+        setCurrentPhase(1)
     }
+
+    useEffect(() => {
+        if(RPSHash && !RPSReceipt) setRPSLoading(true)
+        else setRPSLoading(false)
+      }, [RPSHash, RPSReceipt])
+  
+      useEffect(() => {
+        if(gameAddress) {
+            navigate(`/play/${gameAddress}`)
+        } 
+      }, [gameAddress])
+  
+      useEffect(() => {
+          if(!RPSReceipt) return
+          let { contractAddress } = RPSReceipt as TransactionReceipt
+          contractAddress = `0x${contractAddress?.substring(2)}`
+          if(isAddress(contractAddress)) {
+            setGameAddress(contractAddress)
+            localStorage.setItem('gameAddress', contractAddress as string)
+            localStorage.setItem('playerMove', move.toString())
+            navigate(`/play/${contractAddress}`)
+          }
+      }, [RPSReceipt])
+  
+      useEffect(() => {
+          if(isAddress(OpponentAddress as Address) && bet && salt) setCurrentPhase(3)
+          else if(isAddress(OpponentAddress as Address) && bet) setCurrentPhase(2)
+          else setCurrentPhase(1)
+      }, [OpponentAddress, bet, salt])
+  
+      useEffect(() => {
+          if(!preparedSalt) return
+          setSalt(preparedSalt)
+      }, [preparedSalt])
+  
+      useEffect(() => {
+          setOpponentAddress(tempOpponentAddress as Address)
+          setResetBet(false)
+      },[tempOpponentAddress, bet])
   
     return (
       <>
-      <h1>Rock Paper Scissors Lizard Spock</h1>
-      {address && (
-        <>
-            <section className="bg-white dark:bg-zinc-900">
-            <div className="py-8 px-4 mx-auto max-w-screen-xl text-center lg:py-16 z-10 relative">
-                <div className="inline-flex justify-between items-center py-1 px-1 pr-4 mb-7 text-sm text-indigo-700 bg-indigo-100 rounded-full dark:bg-indigo-900 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-800">
-                    <span className="text-xs bg-indigo-600 rounded-full text-white px-4 py-1.5 mr-3">New</span> <span className="text-base font-medium">Rock</span> 
-                    <svg aria-hidden="true" className="ml-2 w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" /></svg>
-                </div>
-                <h1 className="mb-4 text-4xl font-extrabold tracking-tight leading-none text-zinc-900 md:text-5xl lg:text-6xl dark:text-white">We invest in the world’s potential</h1>
-                <p className="mb-8 text-lg font-normal text-zinc-500 lg:text-xl sm:px-16 lg:px-48 dark:text-zinc-200">Here at Flowbite we focus on markets where technology, innovation, and capital can unlock long-term value and drive economic growth.</p>
-                <form className="w-full max-w-md mx-auto">   
-                <label htmlFor="default-email" className="mb-2 text-sm font-medium text-zinc-900 sr-only dark:text-white">Email sign-up</label>
-                {/* <div className="relative">
-                    <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                    <svg className="w-5 h-5 text-zinc-500 dark:text-zinc-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                        <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
-                        <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
-                    </svg>
+      { address ? (
+        <section className="bg-white dark:bg-zinc-900">
+            <div className="py-8 px-4 mx-auto max-w-screen-xl text-center z-10 relative">
+                <h1 className="mb-10 text-4xl font-extrabold tracking-tight leading-none text-zinc-900 md:text-5xl lg:text-6xl dark:text-white">Rock Paper Scissors - Lizard Spock</h1>
+                <div className='flex flex-col max-w-5xl mx-auto mt-8 mb-8'>
+                    <ol className="flex items-center w-full p-3 px-5 space-x-2 text-sm font-medium text-center text-zinc-500 bg-white border border-zinc-200 rounded-lg shadow-sm dark:text-zinc-400 sm:text-base dark:bg-zinc-800 dark:border-zinc-700 sm:p-4 sm:space-x-4">
+                        {
+                            Object.keys(phases).map((phase: any, i) => {
+                                phase = phases[Number(phase)]
+                                
+                                return (
+                                <li key={i} className={`flex items-center ${i+1 === currentPhase ? 'text-indigo-600 dark:text-indigo-500' : 'text-zinc-500 dark:text-zinc-400'} space-x-2.5`}>
+                                    <span className={`flex items-center justify-center w-8 h-8 border ${ i+1 === currentPhase ? 'border-indigo-600' : 'border-zinc-500'} rounded-full shrink-0`}>
+                                        {i+1}
+                                    </span>
+                                    <span>
+                                        <h3 className="font-medium leading-tight">{phase.title}</h3>
+                                        <p className="text-sm">{phase.description}</p>
+                                    </span>
+                                    {i !== Object.keys(phases).length - 1 && (
+                                        <svg aria-hidden="true" className="w-4 h-4 ml-2 sm:ml-4" fill="none" stroke="gray" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" /></svg>
+                                    )}
+                                </li>
+                            )})
+                        }
+                    </ol>
+                    <div className='flex mt-5 justify-center p-10 rounded-lg shadow-sm dark:text-zinc-400 sm:text-base border dark:bg-zinc-800/30 dark:border-zinc-700'>
+                        <div className='flex flex-col pr-10 items-center justify-center'>
+                            <div className="mb-6 w-full">
+                                <label className="block mb-2 text-sm font-medium text-zinc-900 dark:text-white">Opponent Address</label>
+                                <input value={tempOpponentAddress} disabled={currentPhase > 2} onChange={(e) => setTempOpponentAddress(e.target.value)} className="bg-zinc-50 border disabled:opacity-50 disabled:cursor-not-allowed border-zinc-300 text-zinc-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5 dark:bg-zinc-700/20 dark:border-zinc-600 dark:placeholder-zinc-400 dark:text-white dark:focus:ring-indigo-500 dark:focus:border-indigo-500" placeholder="Address..." required />
+                            </div> 
+                            <div className="mb-6">
+                                <label htmlFor="email" className="block mb-2 text-sm font-medium text-zinc-900 dark:text-white">Your Bet</label>
+                                <EthInputGadget resetBet={resetBet} disabled={currentPhase > 2} betCallback={setBet} />
+                            </div>
+                            <div className='flex'>
+                                {currentPhase > 2 &&
+                                    <button 
+                                        disabled={!salt} 
+                                        onClick={() => reset()} 
+                                        className="text-white m-4 bg-indigo-700 hover:bg-indigo-800 focus:ring-4 focus:outline-none focus:ring-indigo-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-indigo-600 dark:hover:bg-indigo-700 dark:focus:ring-indigo-800">
+                                            Reset
+                                    </button>
+                                }
+                                {currentPhase < 3 && 
+                                    <button disabled={currentPhase < 2} onClick={() => currentPhase < 2 ? () => {} : signMove()} 
+                                    className= { currentPhase < 2 ? 
+                                        "disabled:opacity-30 grayscale cursor-not-allowed text-white m-4 bg-indigo-700 hover:bg-indigo-800 focus:ring-4 focus:outline-none focus:ring-indigo-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-indigo-600 dark:hover:bg-indigo-700 dark:focus:ring-indigo-800"
+                                        : "text-white m-4 bg-indigo-700 hover:bg-indigo-800 focus:ring-4 focus:outline-none focus:ring-indigo-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-indigo-600 dark:hover:bg-indigo-700 dark:focus:ring-indigo-800"
+                                        }>
+                                        Sign Move
+                                    </button>
+                                }
+                                {currentPhase === 3 &&
+                                    <button 
+                                        disabled={!salt} 
+                                        onClick={() => deployRPS()} 
+                                        className="text-white m-4 bg-indigo-700 hover:bg-indigo-800 focus:ring-4 focus:outline-none focus:ring-indigo-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-indigo-600 dark:hover:bg-indigo-700 dark:focus:ring-indigo-800">
+                                            { RPSLoading ? 'Creating Game ...' : 'Create Game' }
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                        <div className='border-l-[1px] h-[200px] my-auto border-zinc-100/10 pl-10'>
+                        </div>
+                        <div className='flex flex-col justify-center'>
+                            <h3 className="text-lg py-4 font-semibold text-zinc-900 dark:text-white">
+                                { currentPhase > 2 ? 'Your Move' : 'Select Your Move' }
+                            </h3>
+                            <ol className="space-y-4 w-56">
+                                {Object.keys(moves).map((_move, i) => {
+                                    const handPath = (new URL(`../assets/icons/${_move}.svg`, import.meta.url)).toString() as string
+                                    
+                                    return (
+                                    <li key={i} value={moves[_move as moveKey]}>
+                                        {i+1 === move ? (
+                                            <div className="w-full p-4 text-green-700 border border-green-300 rounded-lg bg-green-50 dark:bg-zinc-800 dark:border-green-800 dark:text-green-400" role="alert">
+                                                <div className="flex items-center justify-center gap-4">
+                                                    <img width={35} src={handPath} />
+                                                    <h3 className="font-medium">{_move}</h3>
+                                                    <svg aria-hidden="true" className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <>
+                                            {currentPhase > 2 ? (<></>) : (
+                                                <div onClick={() => setMove(i+1)} className="p-4 w-full text-zinc-900 bg-zinc-100 border border-zinc-300 rounded-lg dark:bg-zinc-800/50 dark:border-zinc-700 dark:text-zinc-400 hover:dark:text-indigo-700 hover:dark:border-indigo-700 hover:dark:dark:bg-zinc-800 cursor-pointer" role="alert">
+                                                    <div className="flex items-center justify-center gap-4">
+                                                        <img width={35} src={handPath} />
+                                                        <h3 className="font-medium">{_move}</h3>
+                                                    </div>
+                                                </div>
+                                            )}
+                                            </>
+                                        )}
+
+                                    </li>
+                                )})}
+                            </ol>
+                        </div>
                     </div>
-                    <input type="email" id="default-email" className="block w-full p-4 pl-10 text-sm text-zinc-900 border border-zinc-300 rounded-lg bg-white focus:ring-indigo-500 focus:border-indigo-500 dark:bg-zinc-800 dark:border-zinc-700 dark:placeholder-zinc-400 dark:text-white dark:focus:ring-indigo-500 dark:focus:border-indigo-500" placeholder="Enter your email here..." required />
-                    <button type="submit" className="text-white absolute right-2.5 bottom-2.5 bg-indigo-700 hover:bg-indigo-800 focus:ring-4 focus:outline-none focus:ring-indigo-300 font-medium rounded-lg text-sm px-4 py-2 dark:bg-indigo-600 dark:hover:bg-indigo-700 dark:focus:ring-indigo-800">Sign up</button>
-                </div> */}
-                </form>
-
-                <div className='flex max-w-2xl mx-auto mt-8 mb-8'>
-                <ol className="flex items-center w-full p-3 space-x-2 text-sm font-medium text-center text-zinc-500 bg-white border border-zinc-200 rounded-lg shadow-sm dark:text-zinc-400 sm:text-base dark:bg-zinc-800 dark:border-zinc-700 sm:p-4 sm:space-x-4">
-                <li className="flex items-center text-indigo-600 dark:text-indigo-500">
-                    <span className="flex items-center justify-center w-5 h-5 mr-2 text-xs border border-indigo-600 rounded-full shrink-0 dark:border-indigo-500">
-                    1
-                    </span>
-                    Game Info
-                    <svg aria-hidden="true" className="w-4 h-4 ml-2 sm:ml-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" /></svg>
-                </li>
-                <li className="flex items-center">
-                    <span className="flex items-center justify-center w-5 h-5 mr-2 text-xs border border-zinc-500 rounded-full shrink-0 dark:border-zinc-400">
-                    2
-                    </span>
-                    Sign Your Move
-                    <svg aria-hidden="true" className="w-4 h-4 ml-2 sm:ml-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" /></svg>
-                </li>
-            <li className="flex items-center text-blue-600 dark:text-blue-500 space-x-2.5">
-            <span className="flex items-center justify-center w-8 h-8 border border-blue-600 rounded-full shrink-0 dark:border-blue-500">
-                1
-            </span>
-            <span>
-                <h3 className="font-medium leading-tight">User info</h3>
-                <p className="text-sm">Step details here</p>
-            </span>
-            </li>
-
-                <li className="flex items-center">
-                    <span className="flex items-center justify-center w-5 h-5 mr-2 text-xs border border-zinc-500 rounded-full shrink-0 dark:border-zinc-400">
-                    3
-                    </span>
-                    Start Game
-                </li>
-                </ol>
                 </div>
-
-
-                <div>Connected: {address}</div>
-            {/* <div>{`Account None ${accountNone} and CREATE address is ${CREATEAddress}`}</div> */}
-            {gameAddress && (
-            <div>Game Address: {gameAddress}</div>
-            )}
-            <select onChange={(e) => setMove(Number(e.target.value))}>
-              {Object.keys(moves).map((move, i) => (
-              <option key={i} value={moves[move as moveKey]}>{move}</option>
-              ))}
-            </select>
-            <input type="text" onChange={(e) => setOpponentAddress(e.target.value as Address)} placeholder="Enter Opponent Address" />
-            <input type="text" onChange={(e) => setBet(Number(e.target.value))} placeholder="Enter Bet" />
-
-            <button onClick={() => createGame()}>Sign Move</button>
-            <button disabled={!salt} onClick={() => deployRPS()}>{ RPSLoading ? 'Loading..' : 'Create Game' }</button>
-            {RPSReceipt && (
-              <>
-              <div>Game Created!</div>
-              <div>Share this link with your opponent: <a href={`https://localhost:/play/${gameAddress}`}>{ `https://localhost:/play/${gameAddress}` }</a></div>
-              <div>Contract Address: {gameAddress}</div>
-              <div>
-                Receipt:{' '}
-                <pre>
-                <code>{stringify(RPSReceipt, null, 2)}</code>
-                </pre>
-              </div>
-              </>
-            )}
-
-                {/* <ol className="relative z-10 text-zinc-500 border-l mt-10 border-zinc-200 dark:border-zinc-700 dark:text-zinc-400">                  
-                    <li className="mb-10 ml-6">            
-                        <span className="absolute flex items-center justify-center w-8 h-8 bg-green-200 rounded-full -left-4 ring-4 ring-white dark:ring-zinc-900 dark:bg-green-900">
-                        <svg aria-hidden="true" className="w-5 h-5 text-green-500 dark:text-green-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                        </span>
-                        <h3 className="font-medium leading-tight">Game Info</h3>
-                        <p className="text-sm">Your Opponent Address, move and bet.</p>
-                    </li>
-                    <li className="mb-10 ml-6">
-                        <span className="absolute flex items-center justify-center w-8 h-8 bg-zinc-100 rounded-full -left-4 ring-4 ring-white dark:ring-zinc-900 dark:bg-zinc-700">
-                        <svg aria-hidden="true" className="w-5 h-5 text-zinc-500 dark:text-zinc-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" /><path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm9.707 5.707a1 1 0 00-1.414-1.414L9 12.586l-1.293-1.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-                        </span>
-                        <h3 className="font-medium leading-tight">Sign Your Move</h3>
-                        <p className="text-sm">To conceal your move from your opponent.</p>
-                    </li>
-                    <li className="ml-6">
-                        <span className="absolute flex items-center justify-center w-8 h-8 bg-zinc-100 rounded-full -left-4 ring-4 ring-white dark:ring-zinc-900 dark:bg-zinc-700">
-                        <svg aria-hidden="true" className="w-5 h-5 text-zinc-500 dark:text-zinc-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" /><path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm9.707 5.707a1 1 0 00-1.414-1.414L9 12.586l-1.293-1.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-                        </span>
-                        <h3 className="font-medium leading-tight">Start the game</h3>
-                        <p className="text-sm">Deploy this game contract to Goerli Network.</p>
-                    </li>
-                </ol> */}
             </div>
-            </section>
-        </> 
-      )}
+        </section>
+      ) : (
+        <div className="flex w-full h-screen -mt-[100px] justify-center items-center">
+            <h3 className="z-10 text-3xl text-center">
+                {
+                    !address ? 'Connect your wallet to start' : 'You are not a player in this game.'
+                }
+            </h3>
+        </div>
+        )}
       </>
     )
 }
