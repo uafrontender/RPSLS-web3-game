@@ -53,10 +53,10 @@ const CreateGame = () => {
     })
 
     const [gameAddress, setGameAddress] = useState<Address | undefined>(
-      localStorage.getItem('gameAddress') as Address
+      localStorage.getItem('rps:gameAddress') as Address
     )
 
-    const [signMessage, preparedSalt] = usePrepareSalt(move, gameAddress)
+    const [signMessage, preparedSalt] = usePrepareSalt(move)
     const [moveHash] = useHash(move, salt!)
   
     const signMove = async () => {
@@ -91,40 +91,41 @@ const CreateGame = () => {
         if(RPSHash && !RPSReceipt) setRPSLoading(true)
         else setRPSLoading(false)
       }, [RPSHash, RPSReceipt])
-  
-      useEffect(() => {
+
+    useEffect(() => {
         if(gameAddress) {
             navigate(`/play/${gameAddress}`)
         } 
-      }, [gameAddress])
-  
-      useEffect(() => {
-          if(!RPSReceipt) return
-          let { contractAddress } = RPSReceipt as TransactionReceipt
-          contractAddress = `0x${contractAddress?.substring(2)}`
-          if(isAddress(contractAddress)) {
+    }, [gameAddress])
+
+    useEffect(() => {
+        if(!RPSReceipt) return
+        let { contractAddress } = RPSReceipt as TransactionReceipt
+        contractAddress = `0x${contractAddress?.substring(2)}`
+
+        if(isAddress(contractAddress)) {
             setGameAddress(contractAddress)
-            localStorage.setItem('gameAddress', contractAddress as string)
-            localStorage.setItem('playerMove', move.toString())
+            localStorage.setItem('rps:gameAddress', contractAddress as string)
+            localStorage.setItem('rps:playerMove', move.toString())
             navigate(`/play/${contractAddress}`)
-          }
-      }, [RPSReceipt])
-  
-      useEffect(() => {
-          if(isAddress(OpponentAddress as Address) && bet && salt) setCurrentPhase(3)
-          else if(isAddress(OpponentAddress as Address) && bet) setCurrentPhase(2)
-          else setCurrentPhase(1)
-      }, [OpponentAddress, bet, salt])
-  
-      useEffect(() => {
-          if(!preparedSalt) return
-          setSalt(preparedSalt)
-      }, [preparedSalt])
-  
-      useEffect(() => {
-          setOpponentAddress(tempOpponentAddress as Address)
-          setResetBet(false)
-      },[tempOpponentAddress, bet])
+        }
+    }, [RPSReceipt])
+
+    useEffect(() => {
+        if(isAddress(OpponentAddress as Address) && bet && salt) setCurrentPhase(3)
+        else if(isAddress(OpponentAddress as Address) && bet) setCurrentPhase(2)
+        else setCurrentPhase(1)
+    }, [OpponentAddress, bet, salt])
+
+    useEffect(() => {
+        if(!preparedSalt) return
+        setSalt(preparedSalt)
+    }, [preparedSalt])
+
+    useEffect(() => {
+        setOpponentAddress(tempOpponentAddress as Address)
+        setResetBet(false)
+    },[tempOpponentAddress, bet])
   
     return (
       <>
@@ -224,7 +225,6 @@ const CreateGame = () => {
                                             )}
                                             </>
                                         )}
-
                                     </li>
                                 )})}
                             </ol>

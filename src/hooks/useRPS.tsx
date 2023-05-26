@@ -5,64 +5,65 @@ import {
     useWaitForTransaction
 } from 'wagmi'
 import * as gameContract from '../contracts/RPS.json'
-import { Address, AbiItem, parseGwei, parseEther, Hash } from 'viem'
+import { Address, AbiItem, parseEther } from 'viem'
+import { IAddress, INumber } from '../contants'
 
-const RPSContract = {
-    address: localStorage.getItem('gameAddress') as Address,
-    abi: gameContract.abi as AbiItem[],
+const RPSContract = () =>  {
+    while(localStorage.getItem('rps:gameAddress') !== null) {
+        return {
+            address: localStorage.getItem('rps:gameAddress') as Address,
+            abi: gameContract.abi as AbiItem[],
+        }
+    }
 }
 
-export const useGameData = () => { 
+export const useGameData = ():[IAddress, IAddress, INumber, INumber, Boolean] => {
     const { data, isFetched } = useContractReads({
         contracts: [
             {
-                ...RPSContract,
+                ...RPSContract(),
                 functionName: 'j1'
             },
             {
-                ...RPSContract,
+                ...RPSContract(),
                 functionName: 'j2'
             },
             {
-                ...RPSContract,
+                ...RPSContract(),
                 functionName: 'stake'
             },
             {
-                ...RPSContract,
+                ...RPSContract(),
                 functionName: 'c2'
-            },
-            {
-                ...RPSContract,
-                functionName: 'c1Hash'
             }
-
-        ]
+        ],
+        watch: true
     })
 
-    if(!isFetched) return [undefined, undefined, 0, 0, undefined]
+    if(!isFetched) return [undefined,undefined,undefined,undefined,false]
 
-    const player1 = data![0].result as Address
-    const player2 = data![1].result as Address
-    const stake = Number(data![2].result)/1e18
-    const player2Move = data![3].result as number
-    const player1Hash = data![4].result as Hash
+    const player1 = data![0].result as IAddress
+    const player2 = data![1].result as IAddress
+    const stake = Number(data![2].result)/1e18 as INumber
+    const player2Move = data![3].result as INumber
     
-    return [player1, player2, stake, player2Move, player1Hash]
+    return [player1, player2, stake, player2Move, isFetched]
 }
 
 export const useMoveCountdown = () => {
     const { data, isFetched } = useContractReads({
         contracts: [
             {
-                ...RPSContract,
+                ...RPSContract(),
                 functionName: 'TIMEOUT'
             },
             {
-                ...RPSContract,
+                ...RPSContract(),
                 functionName: 'lastAction'
             },
 
-        ]
+        ],
+        watch: true
     })
 
     if(!isFetched) return [0, 0]
@@ -73,9 +74,12 @@ export const useMoveCountdown = () => {
     return [Number(timeout), Number(lastAction)]
 }
 
-export const usePlay = (move: number, bet: number):[(config?: any | undefined) => void, Boolean, Boolean, Boolean] => {
+export const usePlay = (
+    move: number, 
+    bet: number):[(config?: any | undefined) => void, Boolean, Boolean, Boolean] => {
+    
     const { config, isError } = usePrepareContractWrite({
-        ...RPSContract,
+        ...RPSContract(),
         functionName: 'play' as any,
         args: [move],
         value: parseEther(`${bet}`) as any
@@ -89,9 +93,12 @@ export const usePlay = (move: number, bet: number):[(config?: any | undefined) =
     return [write, isLoading, isSuccess, isError]
 }
 
-export const useSolve = (move: number, salt: bigint):[(config?: any | undefined) => void, Boolean, Boolean, Boolean] => {
+export const useSolve = (
+    move: number, 
+    salt: bigint):[(config?: any | undefined) => void, Boolean, Boolean, Boolean] => {
+
     const { config, isError } = usePrepareContractWrite({
-        ...RPSContract,
+        ...RPSContract(),
         functionName: 'solve' as any,
         args: [move, salt]
     })
@@ -104,29 +111,29 @@ export const useSolve = (move: number, salt: bigint):[(config?: any | undefined)
     return [write, isLoading, isSuccess, isError]
 }
 
-export const useTimeout = (isPlayer2: Boolean):[(config?: any | undefined) => void, Boolean, Boolean] => {
-    const { config: j1config } = usePrepareContractWrite({
-        ...RPSContract,
+export const useJ1Timeout = ():[(config?: any | undefined) => void, Boolean, Boolean] => {
+    const { config } = usePrepareContractWrite({
+        ...RPSContract(),
         functionName: 'j1Timeout' as any,
         args: []
     })
+    const { data, write } = useContractWrite(config as any)
+    const { isLoading, isSuccess } = useWaitForTransaction({
+        hash: data?.hash,
+    })
+    return [write, isLoading, isSuccess]
+}
 
-    const { config: j2config } = usePrepareContractWrite({
-        ...RPSContract,
+export const useJ2Timeout = ():[(config?: any | undefined) => void, Boolean, Boolean] => {    
+    const { config } = usePrepareContractWrite({
+        ...RPSContract(),
         functionName: 'j2Timeout' as any,
         args: []
     })
-
-    const { data: j1, write: j1write } = useContractWrite(j1config as any)
-    const { data: j2, write: j2write } = useContractWrite(j2config as any)
-
-    const { isLoading: j1Loading, isSuccess: j1Sucess } = useWaitForTransaction({
-        hash: j1?.hash,
+    const { data, write } = useContractWrite(config as any)
+    const { isLoading, isSuccess } = useWaitForTransaction({
+        hash: data?.hash,
     })
-
-    const { isLoading: j2Loading, isSuccess: j2Success } = useWaitForTransaction({
-        hash: j2?.hash,
-    })
-    
-    return isPlayer2 ? [j1write, j1Loading, j1Sucess] : [j2write, j2Loading, j2Success]
+    return [write, isLoading, isSuccess]
 }
+

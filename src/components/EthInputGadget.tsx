@@ -1,8 +1,6 @@
 import { FC, useEffect, useState } from "react"
-
 import { Address } from "wagmi"
 import { useAccount, useBalance } from "wagmi"
-
 
 const InputGadget: FC<any> = (({ betCallback, resetBet, disabled = false }: { betCallback: Function, resetBet: Boolean, disabled?: Boolean }) => {
     const { address } = useAccount()

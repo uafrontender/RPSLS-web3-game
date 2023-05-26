@@ -7,10 +7,6 @@
 @tailwind utilities;
 
 /* custom styles */
-:root {
-    --bg-image: url('/2.png');
-}
-
 .flip {
     -webkit-transform: scaleX(-1);
     transform: scaleX(-1);

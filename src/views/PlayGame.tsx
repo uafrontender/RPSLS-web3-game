@@ -4,10 +4,11 @@ import { useMoveCountdown,
     useGameData, 
     usePlay, 
     useSolve,
-    useTimeout } from "../hooks/useRPS"
+    useJ1Timeout,
+    useJ2Timeout } from "../hooks/useRPS"
 import { formatTime } from "../utils/formatTime"
 import { isAddress } from "viem"
-import { useAccount, Address, useBalance } from "wagmi"
+import { useAccount, Address } from "wagmi"
 import { usePrepareSalt } from "../hooks/usePrepareSalt"
 
 import { moves, moveKey } from '../contants'
@@ -21,27 +22,30 @@ const PlayGame = () => {
     const [timeout, lastAction] = useMoveCountdown()
     const [now, setNow] = useState(Math.floor(Date.now()/1000))
     const [moveCoundtown, setMoveCountdown] = useState<string | 0>(formatTime(0))
-    const [player1, player2, bet, player2Move, player1Hash] = useGameData()
-    const [move, setMove] = useState(Number(localStorage.getItem('playerMove')) || 1)
-    const [play, playLoading, playSuccess] = usePlay(move, Number(bet))
+    const [player1, player2, bet, player2Move, isGameDataFetched] = useGameData()
+    const [move, setMove] = useState(Number(localStorage.getItem('rps:playerMove')) || 1)
+    const [play, playLoading] = usePlay(move, bet ? Number(bet) : 0)
     const [signMessage, salt] = usePrepareSalt(move, gameAddress as Address)
     const [solve, solveLoading, solveSuccess] = useSolve(move, salt)
     const [gameEnded, setGameEnded] = useState(false)
-    const isPlayer2 = address === player2
-    const [timout, timeoutLoading, timeoutSuccess] = useTimeout(isPlayer2)
+    const [isPlayer, setIsPlayer] = useState(false)
+    const [isPlayer2, setIsPlayer2] = useState(false)
+    const [j1timeout, j1timeoutLoading, j1timeoutSuccess] = useJ1Timeout()
+    const [j2timeout, j2timeoutLoading, j2timeoutSuccess] = useJ2Timeout()
+    const [timeoutLoading, setTimeoutLoading] = useState(false)
 
-    useEffect(() => {
-        // localStorage.getItem('gameAddress')
-        // localStorage.getItem('playerMove')]
-        console.log(gameAddress, move)
-    }, [])
-    
     const opponentAddress = () => {
         return player1 === address ? player2 : player1
     }
 
+    const handleTimeout = () => {
+        setTimeoutLoading(true)
+        isPlayer2 ? j1timeout?.() : j2timeout?.()
+    }
+
     const handleSolve = () => {
-        if(!move) return
+        // get player 1 original move (if two players play in the same session)
+        setMove(Number(localStorage.getItem('rps:playerMove')))
         if(!salt) {
             signMessage?.()
             return
@@ -50,8 +54,9 @@ const PlayGame = () => {
     }
 
     const newMatch = () => {
-        localStorage.removeItem('playerMove')
-        localStorage.removeItem('gameAddress')
+        // clean up local storage
+        localStorage.removeItem('rps:playerMove')
+        localStorage.removeItem('rps:gameAddress')
         navigate(`/`)
     }
 
@@ -71,16 +76,26 @@ const PlayGame = () => {
 
     // game ended
     useEffect(() => {
-        if(player2Move && bet === 0) {
-            setGameEnded(true)
-        }
-    }, [player2Move, bet])
+        if(isGameDataFetched && bet && bet === 0) { setGameEnded(true) }
+        else if(j1timeoutSuccess || j2timeoutSuccess || solveSuccess) { setGameEnded(true) }
+        console.log(gameEnded)
+    }, [bet, isGameDataFetched, j1timeoutSuccess, j2timeoutSuccess, solveSuccess])
 
     useEffect(() => {
         if(!gameAddress) navigate('/')
         else if(!isAddress(gameAddress)) navigate('/')
     }, [gameAddress])
 
+    useEffect(() => {
+        if(!address || address !== player1 && address !== player2) {
+            setIsPlayer(false)
+        } else {
+            setIsPlayer(true)
+            if(address !== player2) {
+                setIsPlayer2(false)
+            } else setIsPlayer2(true)
+        }
+    }, [address, gameAddress, player1, player2, isGameDataFetched])
     
     useEffect(() => {
         // Remaining time = Timeout duration - Time since last action
@@ -89,10 +104,18 @@ const PlayGame = () => {
         )
     }, [now, lastAction, timeout])
 
+    useEffect(() => {
+        if(j1timeoutLoading || j2timeoutLoading) setTimeoutLoading(false)
+    }, [j1timeoutLoading, j2timeoutLoading])
+
+    // useEffect(() => {
+    //     if(!isGameDataFetched) window.location.reload()
+    // }, [isGameDataFetched])
+
     return (
         <>
-        {/* Game running and user is a player */}
-        { address && address === player1 || isPlayer2 ? !gameEnded ? (
+        {/* Game initialized and user is a player and game is running */}
+        { isGameDataFetched ? isPlayer && gameEnded === false ? (
         <section className="bg-white dark:bg-zinc-900">
             <div className="py-8 px-4 mx-auto max-w-screen-2xl text-center z-10 relative">
                 <h1 className="mb-10 text-4xl font-extrabold tracking-tight leading-none text-zinc-900 md:text-5xl lg:text-6xl dark:text-white">Rock Paper Scissors - Lizard Spock</h1>
@@ -107,9 +130,9 @@ const PlayGame = () => {
                             </h3>
                             { showTimeout() ? (
                                 <button 
-                                    onClick={() => timout?.()}
+                                    onClick={() => handleTimeout()}
                                     className="text-white m-4 cursor-pointer bg-indigo-700 hover:bg-indigo-800 focus:ring-4 focus:outline-none focus:ring-indigo-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-indigo-600 dark:hover:bg-indigo-700 dark:focus:ring-indigo-800">
-                                        { timeoutLoading ? 'Loading..' : 'Opponent Timeout' }
+                                        { j1timeoutLoading || j2timeoutLoading || timeoutLoading ? 'Loading..' : 'Opponent Timeout' }
                                 </button>
                             ) : null}
                         </div>
@@ -138,10 +161,10 @@ const PlayGame = () => {
                                     { isPlayer2 ? (
                                         <img className="m-10 flip" width={250} src={(new URL(`../assets/hands/Unknown.svg`, import.meta.url)).toString()} />
                                     ) : (
-                                        <img className="m-10 flip" width={250} src={(new URL(`../assets/hands/${[...Object.keys(moves)][player2Move ? player2Move as number : move-1 as number]}.svg`, import.meta.url)).toString()} />
+                                        <img className="m-10 flip" width={250} src={(new URL(`../assets/hands/${[...Object.keys(moves)][Number(localStorage.getItem('rps:playerMove')) - 1]}.svg`, import.meta.url)).toString()} />
                                     )}
                                     <div className="mb-6 w-24 mx-auto">
-                                        <label className="block mb-2 text-sm font-medium text-zinc-900 dark:text-white">Opponent Bet</label>
+                                        <label className="block mb-2 text-sm font-medium text-zinc-900 dark:text-white">{isPlayer2 ? 'Opponent' : 'My' } Bet</label>
                                         <input value={`${bet} Ether`} disabled={true} className="bg-zinc-50 border disabled:opacity-50 disabled:cursor-not-allowed border-zinc-300 text-zinc-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5 dark:bg-zinc-700/20 dark:border-zinc-600 dark:placeholder-zinc-400 dark:text-white dark:focus:ring-indigo-500 dark:focus:border-indigo-500" placeholder="Address..." required />
                                     </div> 
                                 </div>
@@ -154,7 +177,7 @@ const PlayGame = () => {
                                     { !isPlayer2 ? (
                                         <img className="m-10" width={250} src={(new URL(`../assets/hands/Unknown.svg`, import.meta.url)).toString()} />
                                     ) : (
-                                        <img className="m-10" width={250} src={(new URL(`../assets/hands/${[...Object.keys(moves)][player2Move ? player2Move as number : move-1 as number]}.svg`, import.meta.url)).toString()} />
+                                        <img className="m-10" width={250} src={(new URL(`../assets/hands/${[...Object.keys(moves)][player2Move ? player2Move - 1 as number : move-1 as number]}.svg`, import.meta.url)).toString()} />
                                     )}
                                     </div>
                                     
@@ -165,8 +188,8 @@ const PlayGame = () => {
                                             { player2Move ? (
                                                 <div className="w-full p-4 text-green-700 border border-green-300 rounded-lg bg-green-50 dark:bg-zinc-800 dark:border-green-800 dark:text-green-400" role="alert">
                                                     <div className="flex items-center justify-center gap-4">
-                                                        <img width={35} src={(new URL(`../assets/icons/${[...Object.keys(moves)][player2Move as number]}.svg`, import.meta.url)).toString()} />
-                                                        <h3 className="font-medium">{ [...Object.keys(moves)][player2Move as number] }</h3>
+                                                        <img width={35} src={(new URL(`../assets/icons/${[...Object.keys(moves)][player2Move - 1 as number]}.svg`, import.meta.url)).toString()} />
+                                                        <h3 className="font-medium">{ [...Object.keys(moves)][player2Move - 1 as number] }</h3>
                                                         <svg aria-hidden="true" className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
                                                     </div>
                                                 </div>
@@ -206,7 +229,7 @@ const PlayGame = () => {
                                 <button 
                                     onClick={() => handleSolve()}
                                     className="text-white m-4 cursor-pointer bg-indigo-700 hover:bg-indigo-800 focus:ring-4 focus:outline-none focus:ring-indigo-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-indigo-600 dark:hover:bg-indigo-700 dark:focus:ring-indigo-800">
-                                        { solveLoading ? 'Loading...' : 'Solve' }
+                                        { solveLoading ? 'Loading...' : `Solve - ${!salt ? 'Sign Transaction' : 'Make Transaction'}` }
                                 </button>
                             ) : null}                                   
                             { !player2Move && isPlayer2 ? (
@@ -225,28 +248,39 @@ const PlayGame = () => {
                 </div>
             </div>
         </section>
+        // game ended
+        ) : gameEnded ? (
+            <div className="flex flex-col w-full h-screen -mt-[100px] justify-center items-center">
+                <h3 className="z-10 text-3xl text-center">
+                    Game Ended
+                </h3>
+                <button 
+                    onClick={() => newMatch()}
+                    className="text-white z-10 m-4 cursor-pointer bg-indigo-700 hover:bg-indigo-800 focus:ring-4 focus:outline-none focus:ring-indigo-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-indigo-600 dark:hover:bg-indigo-700 dark:focus:ring-indigo-800">
+                        New Match?
+                </button>
+            </div>
         ) : (
-        /* Game ended */
-        <div className="flex flex-col w-full h-screen -mt-[100px] justify-center items-center">
-            <h3 className="z-10 text-3xl text-center">
-                Game Ended
-            </h3>
-            <button 
-                onClick={() => newMatch()}
-                className="text-white z-10 m-4 cursor-pointer bg-indigo-700 hover:bg-indigo-800 focus:ring-4 focus:outline-none focus:ring-indigo-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-indigo-600 dark:hover:bg-indigo-700 dark:focus:ring-indigo-800">
-                    New Match?
-            </button>
-        </div>
+            <div className="flex w-full h-screen -mt-[100px] justify-center items-center">
+                <h3 className="z-10 text-3xl text-center">
+                    {
+                        !address ? 'Connect your wallet to start' : 'You are not a player in this game.'
+                    }
+                </h3>
+            </div>
+        // game waiting for on-chain data to be fetched
         ) : (
-        <div className="flex w-full h-screen -mt-[100px] justify-center items-center">
-            <h3 className="z-10 text-3xl text-center">
-                {
-                    !address ? 'Connect your wallet to start' : 'You are not a player in this game.'
-                }
-            </h3>
-        </div>
+            <div className="flex w-full h-screen -mt-[100px] justify-center items-center">
+                <h3 className="z-10 text-3xl text-center">
+                    <svg aria-hidden="true" className="inline w-8 h-8 mr-2 text-gray-200 animate-spin dark:text-gray-600 fill-white" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" fill="currentColor" />
+                        <path d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z" fill="currentFill" />
+                    </svg>
+                <span className="sr-only">Loading...</span>
+                </h3>
+            </div>
         )}
-        </>
+    </>
     )
 }
 
