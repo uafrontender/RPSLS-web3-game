@@ -10,7 +10,7 @@ Run `yarn` then `yarn dev` in your terminal, and then open [localhost:3000](http
 
 The game runs on the `Goerli` Network.
 
-Live at [tbd]
+Live at [rps-lizard-spock.vercel.app](https://rps-lizard-spock.vercel.app/)
 
 
 # Salt Generation Rationale and Criteria
