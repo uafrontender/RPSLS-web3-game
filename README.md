@@ -8,6 +8,8 @@ Created as a submission for Kleros Technical Round, not intended for public usag
 
 Run `yarn` then `yarn dev` in your terminal, and then open [localhost:3000](http://localhost:3000) in your browser. Note that `RPS.sol` is compiled into ABI and bytecode after the dependencies installation using `postinstall` hook.
 
+The game runs on the `Goerli` Network.
+
 Live at [tbd]
 
 
@@ -23,7 +25,7 @@ A better solution for providing great user experience while preserving player se
 
 
 ## Salt Generation Algorithm
-Salt in this game is the unsigned numerial representation of the hash of a signed message by the game contract deployer (player 1), the message constitues of arbitrary fixed words + game address and player chosen move in that particular game. The salt is generated using the below algorithm:
+Salt in this game is the unsigned numerical representation of the hash of a message signed using deployer private key, the message constitues of arbitrary fixed words + game address and player chosen move in that particular game. The salt is generated using the below algorithm:
 
 1. Player choose a `move` from 1 to 5.
 2. `account_nonce = Account total transactions`
@@ -59,7 +61,7 @@ When we represent it's payoff matrix it becomes like this:
 When we look at the matrix, we conclude that:
 
 - There is no dominant strategy for any player in this matrix. As there is no single action that guarantees a player the highest payoff regardless of the opponent's choice.
-- As there's no dominant strategy, There is also no pure strategy equilibria.
+- For the above matrix, with no player guessing or knowing the probabilities of other player choices, There is no pure strategy equilibria.
 
 ## Mixed strategy nash equilibria is playing `1/5` each hand
 

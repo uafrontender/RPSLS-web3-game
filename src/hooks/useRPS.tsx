@@ -9,7 +9,13 @@ import { Address, AbiItem, parseEther } from 'viem'
 import { IAddress, INumber } from '../contants'
 
 const RPSContract = () =>  {
-    while(localStorage.getItem('rps:gameAddress') !== null) {
+    try {
+        return {
+            address: localStorage.getItem('rps:gameAddress') as Address,
+            abi: gameContract.abi as AbiItem[],
+        }
+    // fallback for race condition
+    } catch (e) {
         return {
             address: localStorage.getItem('rps:gameAddress') as Address,
             abi: gameContract.abi as AbiItem[],

@@ -3,22 +3,33 @@ import { defineConfig } from 'vite'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  define: {
-    global: 'globalThis',
-  },
-  resolve: {
-    alias: {
-      process: 'process/browser',
-      util: 'util',
+    define: { global: (() => { 
+        let globalVariable = 'globalThis'; 
+        try { 
+            // Try to import @safe-global/safe-apps-provider 
+            require.resolve('@safe-global/safe-apps-provider'); 
+            // Try to import @safe-global/safe-apps-sdk 
+            require.resolve('@safe-global/safe-apps-sdk'); 
+            // If both modules are found, return the custom global variable 
+            globalVariable = 'global'; 
+        } catch (e) { 
+            // If either module is not found, fallback to globalThis 
+            globalVariable = 'globalThis'; 
+        } return globalVariable; })() 
     },
-  },
-  server: {
-    origin: 'http://localhost:3000',
-    port: 3000,
-    host: '0.0.0.0',
-    fs: {
-      strict: true,
-    }
-  },
-  plugins: [react()],
+    resolve: {
+        alias: {
+            process: 'process/browser',
+            util: 'util',
+        },
+    },
+    server: {
+        origin: 'http://localhost:3000',
+        port: 3000,
+        host: '0.0.0.0',
+        fs: {
+            strict: true,
+        }
+    },
+    plugins: [react()],
 })
