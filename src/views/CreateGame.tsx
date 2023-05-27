@@ -15,7 +15,7 @@ import { useAccount,
 } from 'wagmi'
 
 import { useHash } from '../hooks/useHasher'
-import { moves, moveKey } from '../contants'
+import { moves, moveKey } from '../constants'
 import EthInputGadget from '../components/EthInputGadget'
 
 const phases = {

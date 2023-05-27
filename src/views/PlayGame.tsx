@@ -11,7 +11,7 @@ import { isAddress, parseEther, parseGwei } from "viem"
 import { useAccount, Address, useBalance } from "wagmi"
 import { usePrepareSalt } from "../hooks/usePrepareSalt"
 
-import { moves, moveKey } from '../contants'
+import { moves, moveKey } from '../constants'
 import { formatAddress } from "../utils/formatAddress"
 
 

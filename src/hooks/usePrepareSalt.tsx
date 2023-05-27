@@ -5,7 +5,7 @@ import { Address,
     useSignMessage, 
     useAccount,
 } from "wagmi"
-import { moves } from "../contants"
+import { moves } from "../constants"
 
 type SignMessageArgs = {
     message: string;

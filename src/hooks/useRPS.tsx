@@ -6,7 +6,7 @@ import {
 } from 'wagmi'
 import * as gameContract from '../contracts/RPS.json'
 import { Address, AbiItem, parseEther } from 'viem'
-import { IAddress, INumber } from '../contants'
+import { IAddress, INumber } from '../constants'
 
 const RPSContract = () =>  {
     try {
