@@ -81,7 +81,7 @@ const PlayGame = () => {
 
     // game ended
     useEffect(() => {
-        if(isGameDataFetched && bet && bet === 0) { setGameEnded(true) }
+        if(isGameDataFetched && bet !== undefined && bet === 0) { setGameEnded(true) }
         else if(j1timeoutSuccess || j2timeoutSuccess || solveSuccess) { setGameEnded(true) }
     }, [bet, isGameDataFetched, j1timeoutSuccess, j2timeoutSuccess, solveSuccess])
 
