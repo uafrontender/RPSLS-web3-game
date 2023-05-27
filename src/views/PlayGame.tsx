@@ -7,8 +7,8 @@ import { useMoveCountdown,
     useJ1Timeout,
     useJ2Timeout } from "../hooks/useRPS"
 import { formatTime } from "../utils/formatTime"
-import { isAddress } from "viem"
-import { useAccount, Address } from "wagmi"
+import { isAddress, parseEther, parseGwei } from "viem"
+import { useAccount, Address, useBalance } from "wagmi"
 import { usePrepareSalt } from "../hooks/usePrepareSalt"
 
 import { moves, moveKey } from '../contants'
@@ -17,7 +17,12 @@ import { formatAddress } from "../utils/formatAddress"
 
 const PlayGame = () => {
     const navigate = useNavigate()
+
     const { address } = useAccount()
+    const { data: userBalance, isError, isLoading } = useBalance({
+        address,
+        watch: true
+    })
     const { gameAddress } = useParams()
     const [timeout, lastAction] = useMoveCountdown()
     const [now, setNow] = useState(Math.floor(Date.now()/1000))
@@ -33,6 +38,8 @@ const PlayGame = () => {
     const [j1timeout, j1timeoutLoading, j1timeoutSuccess] = useJ1Timeout()
     const [j2timeout, j2timeoutLoading, j2timeoutSuccess] = useJ2Timeout()
     const [timeoutLoading, setTimeoutLoading] = useState(false)
+    const [balanceBeforeGame, setBalanceBeforeGame] = useState(0)
+    const [isWinner, setIsWinner] = useState<Boolean | undefined>(undefined)
 
     const opponentAddress = () => {
         return player1 === address ? player2 : player1
@@ -44,8 +51,6 @@ const PlayGame = () => {
     }
 
     const handleSolve = () => {
-        // get player 1 original move (if two players play in the same session)
-        setMove(Number(localStorage.getItem('rps:playerMove')))
         if(!salt) {
             signMessage?.()
             return
@@ -78,8 +83,19 @@ const PlayGame = () => {
     useEffect(() => {
         if(isGameDataFetched && bet && bet === 0) { setGameEnded(true) }
         else if(j1timeoutSuccess || j2timeoutSuccess || solveSuccess) { setGameEnded(true) }
-        console.log(gameEnded)
     }, [bet, isGameDataFetched, j1timeoutSuccess, j2timeoutSuccess, solveSuccess])
+
+    // set winner
+    useEffect(() => {
+        let balance = Number(userBalance?.value)/1e18
+        if(bet && bet > 0) setBalanceBeforeGame(balance)
+        else {
+            if(balance > balanceBeforeGame) setIsWinner(true)
+            else setIsWinner(false)
+        }
+        console.log(balanceBeforeGame)
+    }, [bet, userBalance])
+
 
     useEffect(() => {
         if(!gameAddress) navigate('/')
@@ -87,6 +103,8 @@ const PlayGame = () => {
     }, [gameAddress])
 
     useEffect(() => {
+        // get player 1 original move (if two players play in the same session)
+        if(address === player1) setMove(Number(localStorage.getItem('rps:playerMove')))
         if(!address || address !== player1 && address !== player2) {
             setIsPlayer(false)
         } else {
@@ -108,9 +126,6 @@ const PlayGame = () => {
         if(j1timeoutLoading || j2timeoutLoading) setTimeoutLoading(false)
     }, [j1timeoutLoading, j2timeoutLoading])
 
-    // useEffect(() => {
-    //     if(!isGameDataFetched) window.location.reload()
-    // }, [isGameDataFetched])
 
     return (
         <>
@@ -155,7 +170,7 @@ const PlayGame = () => {
                                 </h3>
                             </div>
                         </div>
-                        <div className="flex items-center justify-center pb-10">
+                        <div className="flex items-center justify-around px-20 pb-10">
                             <div className='flex flex-col pr-20 items-center justify-center'>
                                 <div className='flex flex-col justify-center'>
                                     { isPlayer2 ? (
@@ -169,7 +184,7 @@ const PlayGame = () => {
                                     </div> 
                                 </div>
                             </div>
-                            <div className='border-l-[1px] h-[300px] border-zinc-100/10 pl-10'>
+                            <div className='border-l-[1px] h-[300px] border-zinc-100/10'>
                             </div>
                             <div className='flex flex-col justify-center'>
                                 <div className="flex">
@@ -251,8 +266,11 @@ const PlayGame = () => {
         // game ended
         ) : gameEnded ? (
             <div className="flex flex-col w-full h-screen -mt-[100px] justify-center items-center">
-                <h3 className="z-10 text-3xl text-center">
+                <h3 className="z-10 text-2xl text-center">
                     Game Ended
+                </h3>
+                <h3 className="z-10 text-6xl text-center py-4">
+                   { isWinner ? 'You Won!' : 'You Lost!' }
                 </h3>
                 <button 
                     onClick={() => newMatch()}

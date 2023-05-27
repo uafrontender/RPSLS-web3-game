@@ -14,25 +14,25 @@ Live at [rps-lizard-spock.vercel.app](https://rps-lizard-spock.vercel.app/)
 
 
 # Salt Generation Rationale and Criteria
-This game is based on commit-reveal cryptographic scheme, where the deployer (game initiator) commits his move choice digest (as a hash) for concealing his choice on-chain, after the counter-party picks a known move the deployer needs to send his hash pre-image to solve the game for both parties. The pre-image of this game is made from a `move` and a `salt`.
+This game is based on commit&reveal cryptographic scheme, where the deployer (game initiator) commits his move choice digest (as a hash) for concealing his choice on-chain, after the counter-party picks a known move. The deployer needs to send his move hash pre-image to solve the game for both parties. The pre-image of this game is made from a `move` and a `salt`.
 
-A secure, completely random salt can be directly picked by the deployer from the range `[0 -> 2^256-1]`, and be memorized later for reveal phase. This process can be unsecure (in case of guessable small digit salt) or secure but hard to memorize, or store which is also potentially dangerous by being lost or stolen.
+A completely random salt can be directly picked by the deployer from the range `[0 -> 2^256-1]`, and be memorized later for reveal phase. This process can be unsecure (in case of guessable small digit salt) or secure but hard to memorize, or store which is also potentially dangerous through the means of being lost or stolen.
 
-A better solution for providing great user experience while preserving player security over his staked assets, and in order for `salt` to be cryptographically secure it need to meet the below criteria: 
-- Be derived from a secret only known to the user, we assume `private key` is only known to the deployer.
-- Be deterministic - contain intuitive constants like `move`.
-- Be Unique for each game by adding some nonce - `game address` can be good for uniqueness 
+A better solution for providing a better user experience while preserving player security over his staked assets, and in order for `salt` to be cryptographically secure it need to meet the below criteria: 
+- Be derived from a secret only known to the user, we assume the deployer `private key` is only known to him.
+- Be deterministic - contain intuitive or memorable constants like `move`. (can be stored safely in the client)
+- Be Unique for each game by adding some game specific nonce - `game address` can be good for uniqueness.
 
 
 ## Salt Generation Algorithm
-Salt in this game is the unsigned numerical representation of the hash of a message signed using deployer private key, the message constitues of arbitrary fixed words + game address and player chosen move in that particular game. The salt is generated using the below algorithm:
+Salt in this game is the unsigned numerical representation of the hash of a message signed using deployer private key, the message consists of arbitrary fixed words + game address and player chosen move in that particular game. The salt is generated using the below algorithm:
 
 1. Player choose a `move` from 1 to 5.
-2. `account_nonce = Account total transactions`
-3. To be deployed contract (game contract) address is determined using `keccak256(rlp([sender, account_nonce]))`
-4. User sign this message using his private key `I'm signing that my hand is [move] for the game $[gameAddress]`
-5. Signed message is hashed using `Keccak256`
-6. Hash is numerically represented using unsiged256 representation
+2. `account_nonce = Account total transactions`.
+3. To be deployed contract (game contract) address is determined using `keccak256(rlp([sender, account_nonce]))`.
+4. User sign this message using his private key `I'm signing that my hand is [move] for the game $[gameAddress]`.
+5. Signed message is hashed using `Keccak256`.
+6. Hash is numerically represented using unsiged256 representation.
 
 
 # What is the Mixed strategy Nash equilibria of this game?
