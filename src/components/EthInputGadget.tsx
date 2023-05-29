@@ -2,7 +2,7 @@ import { FC, useEffect, useState } from "react"
 import { Address } from "wagmi"
 import { useAccount, useBalance } from "wagmi"
 
-const InputGadget: FC<any> = (({ betCallback, resetBet, disabled = false }: { betCallback: Function, resetBet: Boolean, disabled?: Boolean }) => {
+const InputGadget: FC<any> = (({ betCallback, resetBet, disabled = false }:{ betCallback: Function, resetBet: Boolean, disabled?: Boolean }) => {
     const { address } = useAccount()
     const { data: balance } = useBalance({ address: address as Address })
     const [tokenAmount, setTokenAmount] = useState<number>(0)
@@ -12,7 +12,6 @@ const InputGadget: FC<any> = (({ betCallback, resetBet, disabled = false }: { be
     }, [tokenAmount])
 
     useEffect(() => {
-        console.log(resetBet)
         if(resetBet) setTokenAmount(0)
     }, [resetBet])
 

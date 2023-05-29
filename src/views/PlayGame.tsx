@@ -13,6 +13,7 @@ import { usePrepareSalt } from "../hooks/usePrepareSalt"
 
 import { moves, moveKey } from '../constants'
 import { formatAddress } from "../utils/formatAddress"
+import ShareModal from "../components/ShareModal"
 
 
 const PlayGame = () => {
@@ -40,6 +41,7 @@ const PlayGame = () => {
     const [timeoutLoading, setTimeoutLoading] = useState(false)
     const [balanceBeforeGame, setBalanceBeforeGame] = useState(0)
     const [isWinner, setIsWinner] = useState<Boolean | undefined>(undefined)
+    const [shareGameModal, setShareGameModal] = useState(false)
 
     const opponentAddress = () => {
         return player1 === address ? player2 : player1
@@ -100,11 +102,18 @@ const PlayGame = () => {
     useEffect(() => {
         if(!gameAddress) navigate('/')
         else if(!isAddress(gameAddress)) navigate('/')
+        else {
+            localStorage.setItem('rps:gameAddress', gameAddress)
+        }
     }, [gameAddress])
 
     useEffect(() => {
-        // get player 1 original move (if two players play in the same session)
-        if(address === player1) setMove(Number(localStorage.getItem('rps:playerMove')))
+        if(address === player1) {
+            console.log(player2Move)
+            if(player2Move! < 1) setShareGameModal(true)
+            // get player 1 original move (if two players play in the same session)
+            setMove(Number(localStorage.getItem('rps:playerMove')))
+        }
         if(!address || address !== player1 && address !== player2) {
             setIsPlayer(false)
         } else {
@@ -131,138 +140,144 @@ const PlayGame = () => {
         <>
         {/* Game initialized and user is a player and game is running */}
         { isGameDataFetched ? isPlayer && gameEnded === false ? (
-        <section className="bg-white dark:bg-zinc-900">
-            <div className="py-8 px-4 mx-auto max-w-screen-2xl text-center z-10 relative">
-                <h1 className="mb-10 text-4xl font-extrabold tracking-tight leading-none text-zinc-900 md:text-5xl lg:text-6xl dark:text-white">Rock Paper Scissors - Lizard Spock</h1>
-                <div className='flex flex-col max-w-7xl mx-auto mt-8 mb-8'>
-                    <div className='flex flex-col justify-center p-10 rounded-lg shadow-sm dark:text-zinc-400 sm:text-base border dark:bg-zinc-800/30 dark:border-zinc-700'>
-                        <div className='flex flex-col items-center justify-center'>
-                            <h3 className="text-6xl pb-2 font-bold text-zinc-900 dark:text-white">
-                                { moveCoundtown }
-                            </h3>
-                            <h3 className="text-sm font-bold text-zinc-900 dark:text-white/40">
-                                Until the end of the choice
-                            </h3>
-                            { showTimeout() ? (
-                                <button 
-                                    onClick={() => handleTimeout()}
-                                    className="text-white m-4 cursor-pointer bg-indigo-700 hover:bg-indigo-800 focus:ring-4 focus:outline-none focus:ring-indigo-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-indigo-600 dark:hover:bg-indigo-700 dark:focus:ring-indigo-800">
-                                        { j1timeoutLoading || j2timeoutLoading || timeoutLoading ? 'Loading..' : 'Opponent Timeout' }
-                                </button>
-                            ) : null}
-                        </div>
-                        <div className="flex justify-around">
-                            <div>
-                                <h3 className="text-lg py-4 pb-1 font-semibold text-zinc-900 dark:text-white">
-                                    { !isPlayer2 ? 'You' : 'Opponent' }
+        <>
+            { shareGameModal &&
+                // invitation link modal
+                <ShareModal showModal={setShareGameModal} address={gameAddress} />
+            }
+            <section className="bg-white dark:bg-zinc-900">
+                <div className="py-8 px-4 mx-auto max-w-screen-2xl text-center z-10 relative">
+                    <h1 className="mb-10 text-4xl font-extrabold tracking-tight leading-none text-zinc-900 md:text-5xl lg:text-6xl dark:text-white">Rock Paper Scissors - Lizard Spock</h1>
+                    <div className='flex flex-col max-w-7xl mx-auto mt-8 mb-8'>
+                        <div className='flex flex-col justify-center p-10 rounded-lg shadow-sm dark:text-zinc-400 sm:text-base border dark:bg-zinc-800/30 dark:border-zinc-700'>
+                            <div className='flex flex-col items-center justify-center'>
+                                <h3 className="text-6xl pb-2 font-bold text-zinc-900 dark:text-white">
+                                    { moveCoundtown }
                                 </h3>
                                 <h3 className="text-sm font-bold text-zinc-900 dark:text-white/40">
-                                    { formatAddress(isPlayer2 ? opponentAddress() as Address : address as Address) }
+                                    Until the end of the choice
                                 </h3>
+                                { showTimeout() ? (
+                                    <button 
+                                        onClick={() => handleTimeout()}
+                                        className="text-white m-4 cursor-pointer bg-indigo-700 hover:bg-indigo-800 focus:ring-4 focus:outline-none focus:ring-indigo-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-indigo-600 dark:hover:bg-indigo-700 dark:focus:ring-indigo-800">
+                                            { j1timeoutLoading || j2timeoutLoading || timeoutLoading ? 'Loading..' : 'Opponent Timeout' }
+                                    </button>
+                                ) : null}
                             </div>
-                            <div>
-                                <h3 className="text-lg py-4 pb-1 font-semibold text-zinc-900 dark:text-white">
-                                    { isPlayer2 ? 'You' : 'Opponent' }
-                                </h3>
-                                <h3 className="text-sm pb-5 font-bold text-zinc-900 dark:text-white/40">
-                                    
-                                    { formatAddress(!isPlayer2 ? opponentAddress() as Address : address as Address) }
-                                </h3>
-                            </div>
-                        </div>
-                        <div className="flex items-center justify-around px-20 pb-10">
-                            <div className='flex flex-col pr-20 items-center justify-center'>
-                                <div className='flex flex-col justify-center'>
-                                    { isPlayer2 ? (
-                                        <img className="m-10 flip" width={250} src={(new URL(`../assets/hands/Unknown.svg`, import.meta.url)).toString()} />
-                                    ) : (
-                                        <img className="m-10 flip" width={250} src={(new URL(`../assets/hands/${[...Object.keys(moves)][Number(localStorage.getItem('rps:playerMove')) - 1]}.svg`, import.meta.url)).toString()} />
-                                    )}
-                                    <div className="mb-6 w-24 mx-auto">
-                                        <label className="block mb-2 text-sm font-medium text-zinc-900 dark:text-white">{isPlayer2 ? 'Opponent' : 'My' } Bet</label>
-                                        <input value={`${bet} Ether`} disabled={true} className="bg-zinc-50 border disabled:opacity-50 disabled:cursor-not-allowed border-zinc-300 text-zinc-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5 dark:bg-zinc-700/20 dark:border-zinc-600 dark:placeholder-zinc-400 dark:text-white dark:focus:ring-indigo-500 dark:focus:border-indigo-500" placeholder="Address..." required />
-                                    </div> 
+                            <div className="flex justify-around">
+                                <div>
+                                    <h3 className="text-lg py-4 pb-1 font-semibold text-zinc-900 dark:text-white">
+                                        { !isPlayer2 ? 'You' : 'Opponent' }
+                                    </h3>
+                                    <h3 className="text-sm font-bold text-zinc-900 dark:text-white/40">
+                                        { formatAddress(isPlayer2 ? opponentAddress() as Address : address as Address) }
+                                    </h3>
+                                </div>
+                                <div>
+                                    <h3 className="text-lg py-4 pb-1 font-semibold text-zinc-900 dark:text-white">
+                                        { isPlayer2 ? 'You' : 'Opponent' }
+                                    </h3>
+                                    <h3 className="text-sm pb-5 font-bold text-zinc-900 dark:text-white/40">
+                                        
+                                        { formatAddress(!isPlayer2 ? opponentAddress() as Address : address as Address) }
+                                    </h3>
                                 </div>
                             </div>
-                            <div className='border-l-[1px] h-[300px] border-zinc-100/10'>
-                            </div>
-                            <div className='flex flex-col justify-center'>
-                                <div className="flex">
-                                    <div className="flex">
-                                    { !player2Move && !isPlayer2 ? (
-                                        <img className="m-10" width={250} src={(new URL(`../assets/hands/Unknown.svg`, import.meta.url)).toString()} />
-                                    ) : (
-                                        <img className="m-10" width={250} src={(new URL(`../assets/hands/${[...Object.keys(moves)][player2Move ? player2Move - 1 as number : move-1 as number]}.svg`, import.meta.url)).toString()} />
-                                    )}
+                            <div className="flex items-center justify-around px-20 pb-10">
+                                <div className='flex flex-col pr-20 items-center justify-center'>
+                                    <div className='flex flex-col justify-center'>
+                                        { isPlayer2 ? (
+                                            <img className="m-10 flip" width={250} src={(new URL(`../assets/hands/Unknown.svg`, import.meta.url)).toString()} />
+                                        ) : (
+                                            <img className="m-10 flip" width={250} src={(new URL(`../assets/hands/${[...Object.keys(moves)][Number(localStorage.getItem('rps:playerMove')) - 1]}.svg`, import.meta.url)).toString()} />
+                                        )}
+                                        <div className="mb-6 w-24 mx-auto">
+                                            <label className="block mb-2 text-sm font-medium text-zinc-900 dark:text-white">{isPlayer2 ? 'Opponent' : 'My' } Bet</label>
+                                            <input value={`${bet} Ether`} disabled={true} className="bg-zinc-50 border disabled:opacity-50 disabled:cursor-not-allowed border-zinc-300 text-zinc-900 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5 dark:bg-zinc-700/20 dark:border-zinc-600 dark:placeholder-zinc-400 dark:text-white dark:focus:ring-indigo-500 dark:focus:border-indigo-500" placeholder="Address..." required />
+                                        </div> 
                                     </div>
-                                    
-                                        <div className="flex flex-col justify-center">
-                                            <h3 className="text-lg py-4 font-semibold text-zinc-900 dark:text-white">
-                                                { player2Move ? `${isPlayer2 ? 'My' : 'Opponent'} Move is` : isPlayer2 ? 'Select Your Move' : null }
-                                            </h3>
-                                            { player2Move ? (
-                                                <div className="w-full p-4 text-green-700 border border-green-300 rounded-lg bg-green-50 dark:bg-zinc-800 dark:border-green-800 dark:text-green-400" role="alert">
-                                                    <div className="flex items-center justify-center gap-4">
-                                                        <img width={35} src={(new URL(`../assets/icons/${[...Object.keys(moves)][player2Move - 1 as number]}.svg`, import.meta.url)).toString()} />
-                                                        <h3 className="font-medium">{ [...Object.keys(moves)][player2Move - 1 as number] }</h3>
-                                                        <svg aria-hidden="true" className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                                                    </div>
-                                                </div>
-                                            ) : isPlayer2 && (
-                                                <ol className="space-y-4 w-56 justify-center mx-auto">
-                                                    {Object.keys(moves).map((_move, i) => {
-                                                        const handPath = (new URL(`../assets/icons/${_move}.svg`, import.meta.url)).toString() as string
-                                                        
-                                                        return (
-                                                        <li key={i} value={moves[_move as moveKey]}>
-                                                            {i+1 === move ? (
-                                                                <div className="w-full p-4 text-green-700 border border-green-300 rounded-lg bg-green-50 dark:bg-zinc-800 dark:border-green-800 dark:text-green-400" role="alert">
-                                                                    <div className="flex items-center justify-center gap-4">
-                                                                        <img width={35} src={handPath} />
-                                                                        <h3 className="font-medium">{_move}</h3>
-                                                                        <svg aria-hidden="true" className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                                                                    </div>
-                                                                </div>
-                                                            ) : (
-                                                                <div onClick={() => setMove(i+1)} className="p-4 w-full text-zinc-900 bg-zinc-100 border border-zinc-300 rounded-lg dark:bg-zinc-800/50 dark:border-zinc-700 dark:text-zinc-400 hover:dark:text-indigo-700 hover:dark:border-indigo-700 hover:dark:dark:bg-zinc-800 cursor-pointer" role="alert">
-                                                                    <div className="flex items-center justify-center gap-4">
-                                                                        <img width={35} src={handPath} />
-                                                                        <h3 className="font-medium">{_move}</h3>
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                        </li>
-                                                    )})}
-                                                </ol>
-                                            )}
+                                </div>
+                                <div className='border-l-[1px] h-[300px] border-zinc-100/10'>
+                                </div>
+                                <div className='flex flex-col justify-center'>
+                                    <div className="flex">
+                                        <div className="flex">
+                                        { !player2Move && !isPlayer2 ? (
+                                            <img className="m-10" width={250} src={(new URL(`../assets/hands/Unknown.svg`, import.meta.url)).toString()} />
+                                        ) : (
+                                            <img className="m-10" width={250} src={(new URL(`../assets/hands/${[...Object.keys(moves)][player2Move ? player2Move - 1 as number : move-1 as number]}.svg`, import.meta.url)).toString()} />
+                                        )}
                                         </div>
+                                        
+                                            <div className="flex flex-col justify-center">
+                                                <h3 className="text-lg py-4 font-semibold text-zinc-900 dark:text-white">
+                                                    { player2Move ? `${isPlayer2 ? 'My' : 'Opponent'} Move is` : isPlayer2 ? 'Select Your Move' : null }
+                                                </h3>
+                                                { player2Move ? (
+                                                    <div className="w-full p-4 text-green-700 border border-green-300 rounded-lg bg-green-50 dark:bg-zinc-800 dark:border-green-800 dark:text-green-400" role="alert">
+                                                        <div className="flex items-center justify-center gap-4">
+                                                            <img width={35} src={(new URL(`../assets/icons/${[...Object.keys(moves)][player2Move - 1 as number]}.svg`, import.meta.url)).toString()} />
+                                                            <h3 className="font-medium">{ [...Object.keys(moves)][player2Move - 1 as number] }</h3>
+                                                            <svg aria-hidden="true" className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                                                        </div>
+                                                    </div>
+                                                ) : isPlayer2 && (
+                                                    <ol className="space-y-4 w-56 justify-center mx-auto">
+                                                        {Object.keys(moves).map((_move, i) => {
+                                                            const handPath = (new URL(`../assets/icons/${_move}.svg`, import.meta.url)).toString() as string
+                                                            
+                                                            return (
+                                                            <li key={i} value={moves[_move as moveKey]}>
+                                                                {i+1 === move ? (
+                                                                    <div className="w-full p-4 text-green-700 border border-green-300 rounded-lg bg-green-50 dark:bg-zinc-800 dark:border-green-800 dark:text-green-400" role="alert">
+                                                                        <div className="flex items-center justify-center gap-4">
+                                                                            <img width={35} src={handPath} />
+                                                                            <h3 className="font-medium">{_move}</h3>
+                                                                            <svg aria-hidden="true" className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                                                                        </div>
+                                                                    </div>
+                                                                ) : (
+                                                                    <div onClick={() => setMove(i+1)} className="p-4 w-full text-zinc-900 bg-zinc-100 border border-zinc-300 rounded-lg dark:bg-zinc-800/50 dark:border-zinc-700 dark:text-zinc-400 hover:dark:text-indigo-700 hover:dark:border-indigo-700 hover:dark:dark:bg-zinc-800 cursor-pointer" role="alert">
+                                                                        <div className="flex items-center justify-center gap-4">
+                                                                            <img width={35} src={handPath} />
+                                                                            <h3 className="font-medium">{_move}</h3>
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </li>
+                                                        )})}
+                                                    </ol>
+                                                )}
+                                            </div>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div className='flex justify-around'>
-                            { player2Move && !isPlayer2 ? (
-                                <button 
-                                    onClick={() => handleSolve()}
-                                    className="text-white m-4 cursor-pointer bg-indigo-700 hover:bg-indigo-800 focus:ring-4 focus:outline-none focus:ring-indigo-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-indigo-600 dark:hover:bg-indigo-700 dark:focus:ring-indigo-800">
-                                        { solveLoading ? 'Loading...' : `Solve - ${!salt ? 'Sign Transaction' : 'Make Transaction'}` }
-                                </button>
-                            ) : null}                                   
-                            { !player2Move && isPlayer2 ? (
-                                <button 
-                                    onClick={() => play?.()}
-                                    className="text-white m-4 cursor-pointer bg-indigo-700 hover:bg-indigo-800 focus:ring-4 focus:outline-none focus:ring-indigo-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-indigo-600 dark:hover:bg-indigo-700 dark:focus:ring-indigo-800">
-                                        { playLoading ? 'Loading...' : 'Submit Move' }
-                                </button>
-                            ) : player2Move && isPlayer2 ? (
-                                <h3 className="self-center">Waiting for your opponent to solve the game</h3>
-                            ) : (
-                                <h3 className="self-center">{ player2Move ? 'Your Opponent choosed a hand' : 'Your Opponent is choosing a hand' }</h3>
-                            )}
+                            <div className='flex justify-around'>
+                                { player2Move && !isPlayer2 ? (
+                                    <button 
+                                        onClick={() => handleSolve()}
+                                        className="text-white m-4 cursor-pointer bg-indigo-700 hover:bg-indigo-800 focus:ring-4 focus:outline-none focus:ring-indigo-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-indigo-600 dark:hover:bg-indigo-700 dark:focus:ring-indigo-800">
+                                            { solveLoading ? 'Loading...' : `Solve - ${!salt ? 'Sign Transaction' : 'Make Transaction'}` }
+                                    </button>
+                                ) : null}                                   
+                                { !player2Move && isPlayer2 ? (
+                                    <button 
+                                        onClick={() => play?.()}
+                                        className="text-white m-4 cursor-pointer bg-indigo-700 hover:bg-indigo-800 focus:ring-4 focus:outline-none focus:ring-indigo-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-indigo-600 dark:hover:bg-indigo-700 dark:focus:ring-indigo-800">
+                                            { playLoading ? 'Loading...' : 'Submit Move' }
+                                    </button>
+                                ) : player2Move && isPlayer2 ? (
+                                    <h3 className="self-center">Waiting for your opponent to solve the game</h3>
+                                ) : (
+                                    <h3 className="self-center">{ player2Move ? 'Your Opponent choosed a hand' : 'Your Opponent is choosing a hand' }</h3>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </section>
+            </section>
+        </>
         // game ended
         ) : gameEnded ? (
             <div className="flex flex-col w-full h-screen -mt-[100px] justify-center items-center">
