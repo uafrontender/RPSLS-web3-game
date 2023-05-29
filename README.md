@@ -8,7 +8,7 @@ Created as a submission for Kleros Technical Round, not intended for public usag
 
 Run `yarn` then `yarn dev` in your terminal, and then open [localhost:3000](http://localhost:3000) in your browser. Note that `RPS.sol` is compiled into ABI and bytecode after the dependencies installation using `postinstall` hook.
 
-The game runs on the `Goerli` Network.
+The game runs on the `Goerli`, `Sepolia` and `Mumbai` Networks.
 
 Live at [rps-lizard-spock.vercel.app](https://rps-lizard-spock.vercel.app/)
 

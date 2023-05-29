@@ -189,7 +189,7 @@ const PlayGame = () => {
                             <div className='flex flex-col justify-center'>
                                 <div className="flex">
                                     <div className="flex">
-                                    { !isPlayer2 ? (
+                                    { !player2Move && !isPlayer2 ? (
                                         <img className="m-10" width={250} src={(new URL(`../assets/hands/Unknown.svg`, import.meta.url)).toString()} />
                                     ) : (
                                         <img className="m-10" width={250} src={(new URL(`../assets/hands/${[...Object.keys(moves)][player2Move ? player2Move - 1 as number : move-1 as number]}.svg`, import.meta.url)).toString()} />
