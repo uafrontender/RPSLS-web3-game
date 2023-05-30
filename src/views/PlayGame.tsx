@@ -95,7 +95,6 @@ const PlayGame = () => {
             if(balance > balanceBeforeGame) setIsWinner(true)
             else setIsWinner(false)
         }
-        console.log(balanceBeforeGame)
     }, [bet, userBalance])
 
 
@@ -110,7 +109,7 @@ const PlayGame = () => {
     useEffect(() => {
         if(address === player1) {
             console.log(player2Move)
-            if(player2Move! < 1) setShareGameModal(true)
+            if(player2Move === undefined || player2Move === 0) setShareGameModal(true)
             // get player 1 original move (if two players play in the same session)
             setMove(Number(localStorage.getItem('rps:playerMove')))
         }

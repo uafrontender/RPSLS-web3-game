@@ -2,7 +2,7 @@ import { FC, useState } from "react"
 
 const ShareModal: FC<any> = ({ address, showModal }:{address: string | undefined, showModal: Function}) => {
     const [copied, setCopied] = useState(false)
-    const baseURL = import.meta.env.MODE = "development" ? "http://localhost:3000" : "https://rps-lizard-spock.vercel.app"
+    const baseURL = import.meta.env.MODE === "development" ? "http://localhost:3000" : "https://rps-lizard-spock.vercel.app"
     const url = `${baseURL}/play/${address?.toString()}`
 
     const copyURL = () => {

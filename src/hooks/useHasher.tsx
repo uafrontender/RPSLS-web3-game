@@ -7,7 +7,8 @@ export const useHash = (move: number, salt: bigint) => {
         address: hasherContract.address as Address,
         abi: hasherContract.abi,
         functionName: 'hash',
-        args: [move, salt]
+        args: [move, salt],
+        chainId: 5 // Goerli
     })
     
     return [hash as Hash, isError]
